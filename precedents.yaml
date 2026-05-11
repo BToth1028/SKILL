@@ -1,0 +1,29 @@
+# Precedents log for ID 43.01 -- custom-skills
+#
+# Per AGENTS.md §5 placement gate: first-in-ID patterns require operator approval;
+# this file records approved patterns for Cursor agent skills versioned under C:\dev.
+
+schema_version: 1
+
+id: "43.01"
+name: custom-skills
+description: >
+  Canonical home for user-authored Cursor Agent Skills (SKILL.md plus assets).
+  Profile consumption: directory junction from
+  %USERPROFILE%\.cursor\skills-cursor\<skill-name>\ to the matching subfolder
+  here, unless superseded by a workspace-local .cursor/skills copy.
+
+established_patterns:
+
+  - pattern_id: cursor-agent-skill-bundle
+    description: >
+      One directory per skill; required SKILL.md; optional ROUTER.yaml,
+      reference trees, packaged snapshots. Name directory in kebab-case matching
+      the skill name in SKILL.md frontmatter.
+    path_rule: >
+      <skill-kebab-name>/ with SKILL.md at root of that directory.
+    extensions_allowed: ["*"]
+    first_established: 2026-05-07
+    examples:
+      - ontology-tutor/SKILL.md
+      - ontology-tutor/ROUTER.yaml

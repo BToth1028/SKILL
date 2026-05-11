@@ -1,0 +1,341 @@
+router_version: "1.1.12"
+skill_id: ontology-tutor
+supported_contract_version: "1.1.12"
+
+vector_ingest:
+  comment: >-
+    ROUTER is the sole corpus source for ontology-tutor vector ingest. Loader
+    calls must pass --ontology-router and must not use full, manifest,
+    manifest_router_union, or custom ingest scopes for this tutor corpus.
+  qdrant_http_url_hint: "http://127.0.0.1:6334"
+  qdrant_collection_name: directive-mcp-search
+  required_chunk_metadata_keys:
+    - skill_id
+    - router_version
+    - routing_id
+    - lineage_source
+    - source_file
+    - content_hash
+  desirable_chunk_metadata_keys_when_typedb:
+    - typedb_authority_plane
+    - typedb_databases_utf8_lexicographic
+    - typedb_manifest_captured_at_utc
+
+retrieval_binding:
+  comment: >-
+    Prefix substantive qdrant-find text with these deterministic routing
+    tokens when no structured vector filter is available.
+  find_query_prefix_parts:
+    - "skill:"
+    - "ontology-tutor"
+    - "routing_id_token:"
+    - "<active-routing-id>"
+    - "corpus_roots:"
+    - "C:/MCP/typedb"
+
+typedb_live_mcp_binding:
+  comment: >-
+    Live TypeDB RPC exists as a separate plane but is forbidden for ontology
+    tutor execution unless the operator explicitly overrides the skill.
+  canonical_logical_name: typedb-mcp
+  destructive_tools_allowed: false
+  tutor_execution_allowed: false
+  contract_database_allowlist_utf8_lexicographic: []
+
+typedb_snapshot_mcp_binding:
+  comment: >-
+    Offline filesystem snapshot. Cursor descriptor folder is user-typedb-snapshot-mcp.
+    It is a read-only evidence plane for manifests, captured schemas, and
+    captured TypeDB documentation under C:/MCP/typedb.
+  canonical_logical_name: typedb-snapshot-mcp
+  cursor_server_name: user-typedb-snapshot-mcp
+  descriptor_folder_hint: user-typedb-snapshot-mcp
+  host_capture_root_hint: "C:/MCP/typedb"
+  mount_path_hint: /typedb-snapshot
+  expected_tools_lexicographic:
+    - read_text_file
+    - search_files
+  snapshot_paths_utf8_lexicographic:
+    manifest_glob: _snapshot/manifest.yaml
+    schema_suffix_convention: .schema.typeql
+    docs_capture_directory: docs_snapshot
+  mutations_forbidden_default: true
+
+typedb_directive_search_binding:
+  comment: >-
+    Vector index over the ROUTER-defined TypeDB snapshot corpus. This is Probe
+    A for ontology-tutor sessions.
+  canonical_logical_name: directive-mcp-search
+  cursor_server_name: user-directive-mcp-search
+  descriptor_folder_hint: user-directive-mcp-search
+  qdrant_http_url_hint: "http://127.0.0.1:6334"
+  qdrant_collection_name: directive-mcp-search
+  expected_tools_lexicographic:
+    - qdrant-find
+  tutor_default_mutations: false
+
+vector_source_file_registry:
+  ontology_skill_bootstrap_corpus_root: "C:/dev/40-49-ai-agents-and-prompts/46-memory-and-bootstrap/46.01-bootstrap-yamls"
+  ontology_skill_bootstrap_corpus_source_prefix: bootstrap_yamls
+  ontology_skill_bootstrap_corpus_literals_utf8_lexicographic:
+    - c-dev_260505-1310.yaml
+    - c-dev_260505-1327.yaml
+    - c-dev_260505-1414.yaml
+    - c-dev_260505-1414_execution-plan.yaml
+    - c-dev_260505-1808_ontology-tutor-audit-handoff.yaml
+    - c-dev_260505-2230.yaml
+    - c-dev_260507-0430.yaml
+    - c-dev_260507-1800_utilix-graph-ontology.yaml
+  ontology_skill_snapshot_corpus_literals_utf8_lexicographic:
+    - _snapshot/iam.schema.typeql
+    - _snapshot/manifest.yaml
+    - _snapshot/utilix.schema.typeql
+    - docs_snapshot/manifest.yaml
+  ontology_skill_snapshot_corpus_globs_utf8_lexicographic:
+    - docs_snapshot/html/docs/core-concepts/**/*.html
+    - docs_snapshot/html/docs/examples/**/*.html
+    - docs_snapshot/html/docs/guides/**/*.html
+    - docs_snapshot/html/docs/manual/**/*.html
+    - docs_snapshot/html/docs/reference/**/*.html
+    - docs_snapshot/html/docs/typeql/**/*.html
+    - docs_snapshot/html/docs/use-cases/**/*.html
+
+situational_retrieval_hints_only_not_evidence:
+  comment: >-
+    These terms steer Probe A and Probe B. They are not citeable facts and must
+    not appear as canonical evidence in decision_trace.
+  high_value_terms_utf8_lexicographic:
+    - abstract type
+    - attribute ownership
+    - entity subtype
+    - inference
+    - owns
+    - plays role
+    - relation
+    - role player
+    - TypeQL define
+    - TypeQL match
+
+unmatched_halt:
+  error_code: ROUTER_MATCH
+  message: "No Router row matched this ontology-tutor turn."
+  payload:
+    hint: "Use GENERAL or add a row with a broader command or keyword match."
+
+on_mcp_default:
+  error_code: MCP_UNAVAILABLE
+  message: "Required ontology-tutor MCP evidence step could not complete."
+  payload:
+    fallback_order:
+      - user-directive-mcp-search
+      - user-typedb-snapshot-mcp
+      - typedb.com
+    terminal_error_code: EVIDENCE_EXHAUSTED
+
+rows:
+  - routing_id: R-F010_FOLDERS
+    match_priority: 80
+    match:
+      command_primary: SLASH
+      slash_command_any_of:
+        - /folders
+      keyword_any_of:
+        - folder hierarchy
+        - folder structure
+        - vault structure
+        - file organization
+        - PARA
+        - BASB
+      keyword_all_of: []
+    allow_prose_output: false
+    on_mcp_unavailable: {}
+    mandatory_sequence:
+      - order: 1
+        kind: MCP
+        registration: user-directive-mcp-search
+        tool: qdrant-find
+        args:
+          query: "skill: ontology-tutor routing_id_token: R-F010_FOLDERS folder taxonomy ontology entity relation attribute TypeDB"
+      - order: 2
+        kind: MCP
+        registration: user-typedb-snapshot-mcp
+        tool: search_files
+        args:
+          path: "C:/MCP/typedb"
+          pattern: "**/*.html"
+          excludePatterns: []
+
+  - routing_id: R-G010_GENERAL
+    match_priority: 50
+    match:
+      command_primary: GENERAL
+      slash_command_any_of: []
+      keyword_any_of:
+        - ontology
+        - knowledge graph
+        - TypeDB
+        - TypeQL
+        - entity
+        - relation
+        - attribute
+        - role
+        - schema
+        - data model
+      keyword_all_of: []
+    allow_prose_output: false
+    on_mcp_unavailable: {}
+    mandatory_sequence:
+      - order: 1
+        kind: MCP
+        registration: user-directive-mcp-search
+        tool: qdrant-find
+        args:
+          query: "skill: ontology-tutor routing_id_token: R-G010_GENERAL TypeDB ontology schema entity relation attribute role"
+      - order: 2
+        kind: MCP
+        registration: user-typedb-snapshot-mcp
+        tool: search_files
+        args:
+          path: "C:/MCP/typedb"
+          pattern: "**/*"
+          excludePatterns: []
+
+  - routing_id: R-L010_LESSON
+    match_priority: 70
+    match:
+      command_primary: SLASH
+      slash_command_any_of:
+        - /learn
+        - /lesson
+        - /project
+        - /explain
+        - /save
+        - /next
+      keyword_any_of:
+        - teach
+        - lesson
+        - explain
+        - project
+      keyword_all_of: []
+    allow_prose_output: false
+    on_mcp_unavailable: {}
+    mandatory_sequence:
+      - order: 1
+        kind: MCP
+        registration: user-directive-mcp-search
+        tool: qdrant-find
+        args:
+          query: "skill: ontology-tutor routing_id_token: R-L010_LESSON TypeDB concepts entity relation attribute role lesson"
+      - order: 2
+        kind: MCP
+        registration: user-typedb-snapshot-mcp
+        tool: search_files
+        args:
+          path: "C:/MCP/typedb"
+          pattern: "**/*.html"
+          excludePatterns: []
+
+  - routing_id: R-M010_MAINTENANCE
+    match_priority: 30
+    match:
+      command_primary: MAINTENANCE
+      slash_command_any_of: []
+      keyword_any_of:
+        - ROUTER.yaml
+        - vector_source_file_registry
+        - user-directive-mcp-search
+        - load_typedb_snapshot_search.py
+        - router_version
+      keyword_all_of: []
+    allow_prose_output: false
+    on_mcp_unavailable: {}
+    mandatory_sequence:
+      - order: 1
+        kind: MCP
+        registration: user-directive-mcp-search
+        tool: qdrant-find
+        args:
+          query: "skill: ontology-tutor routing_id_token: R-M010_MAINTENANCE ROUTER vector_source_file_registry user-directive-mcp-search"
+
+  - routing_id: R-S010_SCHEMA
+    match_priority: 90
+    match:
+      command_primary: SLASH
+      slash_command_any_of:
+        - /schema
+      keyword_any_of:
+        - schema
+        - TypeQL
+        - database design
+        - ER model
+        - data model
+      keyword_all_of: []
+    allow_prose_output: false
+    on_mcp_unavailable: {}
+    mandatory_sequence:
+      - order: 1
+        kind: MCP
+        registration: user-directive-mcp-search
+        tool: qdrant-find
+        args:
+          query: "skill: ontology-tutor routing_id_token: R-S010_SCHEMA TypeQL define schema entity relation owns plays attribute"
+      - order: 2
+        kind: MCP
+        registration: user-typedb-snapshot-mcp
+        tool: search_files
+        args:
+          path: "C:/MCP/typedb"
+          pattern: "*.schema.typeql"
+          excludePatterns: []
+
+  - routing_id: R-T010_TRACE
+    match_priority: 60
+    match:
+      command_primary: SLASH
+      slash_command_any_of:
+        - /trace
+      keyword_any_of:
+        - decision_trace
+        - provenance
+        - evidence
+        - why
+      keyword_all_of: []
+    allow_prose_output: false
+    on_mcp_unavailable: {}
+    mandatory_sequence:
+      - order: 1
+        kind: MCP
+        registration: user-directive-mcp-search
+        tool: qdrant-find
+        args:
+          query: "skill: ontology-tutor routing_id_token: R-T010_TRACE evidence decision_trace provenance TypeDB"
+
+  - routing_id: R-V010_VALIDATE
+    match_priority: 85
+    match:
+      command_primary: SLASH
+      slash_command_any_of:
+        - /validate
+      keyword_any_of:
+        - validate
+        - audit
+        - check schema
+        - review model
+      keyword_all_of: []
+    allow_prose_output: false
+    on_mcp_unavailable: {}
+    mandatory_sequence:
+      - order: 1
+        kind: MCP
+        registration: user-directive-mcp-search
+        tool: qdrant-find
+        args:
+          query: "skill: ontology-tutor routing_id_token: R-V010_VALIDATE validate schema model TypeDB entity relation attribute role"
+      - order: 2
+        kind: MCP
+        registration: user-typedb-snapshot-mcp
+        tool: search_files
+        args:
+          path: "C:/MCP/typedb"
+          pattern: "**/*"
+          excludePatterns: []

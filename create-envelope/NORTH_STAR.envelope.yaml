@@ -1,0 +1,54 @@
+ontology_version: "1.0.0"
+vocab_authority_id: "019dd4ef-a239-7280-8177-0dd9b07db842"
+id: "019dd5b8-5085-7c0b-9d0e-c3ea7e7e5082"
+domain: capability
+role: capability
+subtype: north_star
+contract:
+  name: north_star_envelope
+  version: "1.0.0"
+lifecycle:
+  state: active
+  since: "2026-05-08T15:12:00-04:00"
+  version: 1
+labels:
+  kot: north_star
+relations:
+  edges:
+    - type: contains
+      source: "019dd5b8-5084-7c0b-9d0e-c3ea7e7e5081"
+      target: "019dd5b8-5085-7c0b-9d0e-c3ea7e7e5082"
+      note: >-
+        create-envelope SKILL.envelope.yaml contains this NORTH_STAR
+        sidecar. Per registry: north_star.permitted_parent_subtypes =
+        [skill_root, command_root]; parent here is skill_root (the
+        SKILL.envelope.yaml in the same package).
+provenance:
+  issued_by: human_operator
+  issued_at: "2026-05-08T15:12:00-04:00"
+  issue_ref: >-
+    PDKOS sidecar for NORTH_STAR.md. Authored alongside the skill per
+    the dog-food principle.
+  authority: human_operator
+  signature: null
+created_at: "2026-05-08T15:12:00-04:00"
+updated_at: "2026-05-08T15:12:00-04:00"
+title: create-envelope NORTH_STAR.md — PDKOS sidecar
+payload:
+  pdkos_authority_ref: "cc2bb9ce-ab27-4a90-82d4-53e3051d696a"
+  governs_file: "NORTH_STAR.md"
+  purpose: >-
+    Sidecar making NORTH_STAR.md a typed graph node. The governed file
+    is the TIER_3 intent brief required by the master-router for SKILL
+    request types. Sidecar carries the envelope; the .md carries the
+    prose.
+  tier_brief_for_package: "create-envelope (TIER_3 SKILL)"
+  required_sections:
+    - context
+    - principles
+    - boundaries_with_rationale
+    - key_concepts_glossary
+    - failure_modes
+    - upstream_inheritance
+    - decision_log_pointer
+  master_router_authority: "C:/Users/rtoth/.cursor/commands/master-router/COMMAND.md"

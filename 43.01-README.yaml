@@ -1,0 +1,172 @@
+ontology_version: "1.0.0"
+vocab_authority_id: "019dd4ef-a239-7280-8177-0dd9b07db842"
+id: "019e17a6-b89c-72c3-bb79-82524a106014"
+domain: governance
+role: folder_readme
+subtype: id
+contract:
+  name: folder_readme_envelope
+  version: "1.0.0"
+lifecycle:
+  state: active
+  since: "2026-05-11T23:50:00-04:00"
+  version: 1
+labels:
+  kot: readme
+relations:
+  edges:
+    - type: contains
+      source: "019dd4ef-a225-74df-a5f2-981b4a003889"
+      target: "019e17a6-b89c-72c3-bb79-82524a106014"
+      note: >-
+        Transitional contains parent — umbrella charter. Category README for jdex
+        prefix 43 (43-README.yaml) is not yet authored under 43-rules-skills-subagents;
+        permitted_parent_subtypes for subtype id permits charter until category envelope exists.
+        Retarget contains edge when category README envelopes the tree.
+    - type: depends_on
+      source: "019e17a6-b89c-72c3-bb79-82524a106014"
+      target: "53aff40b-6e04-4483-83c9-5cb516fe3528"
+      note: >-
+        Folder README shape, approved_child_folders posture, homogeneity carve-outs per 01.05-folder-envelope-spec.
+    - type: depends_on
+      source: "019e17a6-b89c-72c3-bb79-82524a106014"
+      target: "cc2bb9ce-ab27-4a90-82d4-53e3051d696a"
+      note: >-
+        Base 15-key PDKOS envelope shape and relation surface rules per envelope_schema_authority.
+provenance:
+  issued_by: human_operator
+  issued_at: "2026-05-11T23:50:00-04:00"
+  issue_ref: >-
+    JDex folder envelope for ids.43.01-custom-skills (Phase 1f). Canonical home of authored SKILL.md packages mirrored to
+    the operator Cursor profile. Provides typed graph anchor for capability skill_root/command_root envelopes (e.g.
+    create-envelope SKILL.envelope.yaml retarget contains parent here from transitional charter routing).
+  authority: human_operator
+  signature: null
+created_at: "2026-05-11T23:50:00-04:00"
+updated_at: "2026-05-11T23:50:00-04:00"
+title: >-
+  Folder README — JDex ID 43.01 custom-skills (Cursor skills canonical source)
+payload:
+  jdex_id: "43.01"
+  jdex_path: "C:\\dev\\40-49-ai-agents-and-prompts\\43-rules-skills-subagents\\43.01-custom-skills"
+  pdkos_authority_ref: "cc2bb9ce-ab27-4a90-82d4-53e3051d696a"
+  purpose: >-
+    Canonical source tree for Cursor Agent Skills (SKILL.md packages) under C:\dev. Each child directory is one skill or
+    skill-family package; skills mirror to %USERPROFILE%\.cursor\skills-cursor\. This README is the graph parent anchor
+    for those packages' envelope sidecars.
+  creation_context:
+    created_on: "2026-05-11"
+    created_by: human_operator
+    originating_decision: >-
+      Phase 1f of TypeQL primitive uplift rollout — publish id-level README for 43.01 so skill_root envelopes can declare
+      a non-charter contains parent aligned with Subtype Contracts Authority permitted_parent_subtypes.
+    source_session: "Cursor agent rollout session 2026-05-11"
+    predecessors:
+      - "dev-README.yaml (workspace_root graph root)"
+      - "create-envelope SKILL.envelope.yaml authored 2026-05-08 with transitional umbrella parent"
+  approved_child_folders:
+    - relative_path: babysit
+      jdex_child_id: null
+      description: Skill — keep PRs merge-ready via review triage and CI loop (thin wrapper prompt).
+      retention_defence: >-
+        Executable agent skill shipped to profile mirror; deleting it removes babysit capability from session tooling.
+    - relative_path: canvas
+      description: Skill — Cursor Canvas analytical artefacts and .canvas.tsx guidance.
+      retention_defence: >-
+        Ships canvas authoring workflow; workspace relies on SKILL for canvas-bound deliverables beside raw chat prose.
+    - relative_path: create-envelope
+      description: Primitive — deterministic PDKOS sidecar emission for governed files across C:\dev.
+      retention_defence: >-
+        Holds registry-backed emission protocol; Subtype Contracts Authority dog-food anchor for closed-world subtype rows.
+    - relative_path: create-hook
+      description: Skill — Cursor hooks (hooks.json, hook scripts).
+      retention_defence: >-
+        Hooks automate agent/session lifecycle locally; deleting folder removes authoring reference for hooks pattern.
+    - relative_path: create-rule
+      description: Skill — Cursor project rules authoring (thin pointers toward AGENTS.md authority).
+      retention_defence: >-
+        Canonical instruction surface for Cursor rules parity with governance single-source doctrine.
+    - relative_path: create-skill
+      description: Skill — scaffold new Agent Skills packages (mirror to profile skills folder).
+      retention_defence: >-
+        Operational entrypoint for authoring new SKILL.md trees; duplicates would fork skill-creation lore.
+    - relative_path: create-subagent
+      description: Skill — Cursor subagent configuration recipes.
+      retention_defence: >-
+        Ships subagent JSON/YAML authoring patterns depended on when wiring multi-agent setups.
+    - relative_path: migrate-to-skills
+      description: Skill — migrate legacy prompts into SKILL.md conventions.
+      retention_defence: >-
+        Operational migration playbook; preserves operator investment when refactoring prompt inventory into skills.
+    - relative_path: sdk
+      description: Skill — Cursor TypeScript Agent SDK hooks and programmatic agent runs.
+      retention_defence: >-
+        Canonical SDK SKILL for automation outside IDE chat; tooling references depend on this package root.
+    - relative_path: shell
+      description: Skill — delegated shell/agent execution workflows (sandbox discipline).
+      retention_defence: >-
+        Ships shell-oriented agent guidance reused when operators wire shell-heavy automations safely.
+    - relative_path: split-to-prs
+      description: Skill — split conversational work into small reviewable GitHub PRs.
+      retention_defence: >-
+        Ships PR-splitting playbook used before merge reviews for large deltas.
+    - relative_path: statusline
+      description: Skill — customise CLI/status line prompt footer context.
+      retention_defence: >-
+        Ships PowerShell/cmd statusline authoring recipe used in operator shell bootstrap.
+    - relative_path: update-cli-config
+      description: Skill — Cursor / Cowork CLI configuration updates referencing profile paths.
+      retention_defence: >-
+        Ships CLI ergonomics playbook so agents do not hand-edit ephemeral profile locations blindly.
+    - relative_path: update-cursor-settings
+      description: Skill — edit VS Code scoped settings.json (Cursor) with validation cautions.
+      retention_defence: >-
+        Canonical path for settings patches; operators rely on SKILL to avoid breaking JSON or policy-forbidden keys.
+  folder_structure:
+    description: >-
+      One directory per skill or skill-family package beneath this ID folder; each holds SKILL.md (or richer trees) plus
+      package precedents/contracts as authored. Root normative sibling files precedents.yaml and .sync-manifest.json sit
+      outside approved_child_folders per 01.05 file carve-outs.
+    layout:
+      babysit:
+        type: folder
+        role: PR babysitting skill package
+      canvas:
+        type: folder
+        role: Cursor Canvas skill package
+      create-envelope:
+        type: folder
+        role: PDKOS sidecar emission primitive (dog-food registry consumer)
+      create-hook:
+        type: folder
+        role: Hooks authoring skill
+      create-rule:
+        type: folder
+        role: Rules authoring skill
+      create-skill:
+        type: folder
+        role: New skill scaffolding skill
+      create-subagent:
+        type: folder
+        role: Subagent authoring skill
+      migrate-to-skills:
+        type: folder
+        role: Prompt → SKILL migration skill
+      sdk:
+        type: folder
+        role: Cursor SDK integration skill
+      shell:
+        type: folder
+        role: Shell execution discipline skill
+      split-to-prs:
+        type: folder
+        role: PR splitting skill
+      statusline:
+        type: folder
+        role: CLI status line skill
+      update-cli-config:
+        type: folder
+        role: CLI profile configuration skill
+      update-cursor-settings:
+        type: folder
+        role: settings.json authoring skill

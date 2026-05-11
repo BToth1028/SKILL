@@ -1,0 +1,1089 @@
+# ============================================================================
+# CONTRACT.yaml — Deterministic Definitions for ontology-tutor
+# ============================================================================
+# All definitions, enums, gates, schemas, error codes, and invariants live
+# here. SKILL.md contains only procedures, narratives, and rationale.
+# §-pointers in SKILL.md resolve to named sections in this file.
+# ============================================================================
+# contract_version: "1.3.7"
+# supported_router_version: "1.2.1"
+# ============================================================================
+
+# --- Pointer Legend -----------------------------------------------------------
+# Every § reference in SKILL.md resolves to exactly one section here.
+# Format: ptr → section key in this file.
+# -----------------------------------------------------------------------------
+pointer_legend:
+  - ptr: "§A"
+    target: authority_source_enum
+    description: "Closed enum for authority_source field"
+  - ptr: "§C"
+    target: classification_values
+    description: "Closed enum for candidate classification"
+  - ptr: "§D"
+    target: commands
+    description: "Command definitions for mode 1 and mode 2"
+  - ptr: "§E"
+    target: evidence_sufficiency
+    description: "Evidence Sufficiency Procedure A-F definitions"
+  - ptr: "§F"
+    target: field_governance
+    description: "Field value governance rules, value_categories, removal states, cursory_semantic_review_criteria"
+  - ptr: "§G"
+    target: gates
+    description: "Validation gate definitions"
+  - ptr: "§H"
+    target: source_9_hard_gate
+    description: "Source 9 hard gate prompt and rules"
+  - ptr: "§I"
+    target: invariants
+    description: "Anti-drift invariant assertions"
+  - ptr: "§J"
+    target: loader_design
+    description: "Vectorizer loader design and flags"
+  - ptr: "§K"
+    target: decision_trace_schema
+    description: "Fields required on every decision_trace entry"
+  - ptr: "§L"
+    target: tool_permissions
+    description: "Allowed and forbidden tools by execution phase"
+  - ptr: "§M"
+    target: mode_selector
+    description: "Mode enum and default"
+  - ptr: "§N"
+    target: message_shape
+    description: "Mandatory assistant message shape rules"
+  - ptr: "§O"
+    target: operator_decision_enum
+    description: "Closed enum for operator_decision field"
+  - ptr: "§P"
+    target: pipelines
+    description: "Step-by-step pipeline definitions for mode 1 and mode 2"
+  - ptr: "§Q"
+    target: question_type_enum
+    description: "Closed enum for question_type classification"
+  - ptr: "§R"
+    target: sources
+    description: "Source definitions table and fixed evidence order"
+  - ptr: "§S"
+    target: scope
+    description: "In-scope and out-of-scope lists"
+  - ptr: "§T"
+    target: transition_criteria
+    description: "Criteria for transitioning between sources"
+  - ptr: "§V"
+    target: value_categories_enum
+    description: "Closed enum for field value categories"
+  - ptr: "§W"
+    target: output_contract
+    description: "Full output YAML schema for mode 1 and mode 2"
+  - ptr: "§X"
+    target: error_definitions
+    description: "Error codes, messages, and structured error schema"
+  - ptr: "§Y"
+    target: required_files
+    description: "Required files, deployment binding rule, router-missing behavior"
+  - ptr: "§Z"
+    target: correction_gate
+    description: "Correction gate table format and rules"
+  - ptr: "§1"
+    target: input_boundary
+    description: "Max candidates per invocation and one-table-per-invocation rule"
+
+# --- Enums --------------------------------------------------------------------
+
+enums:
+  mode:
+    values: [1, 2]
+    default: 1
+    description: "1 = Pure TypeDB. 2 = TypeDB Embodiment using SQL."
+
+  authority_source:
+    # §A
+    values:
+      - source_1
+      - source_1+source_2
+      - source_1+source_3
+      - source_9
+    forbidden_standalone: [source_2, source_3]
+    description: >
+      Closed enum. source_1 = grounded entirely in Source 1.
+      source_1+source_2 = Source 2 refreshed into Source 1.
+      source_1+source_3 = Source 3 refreshed into Source 1.
+      source_9 = operator-approved explanation only (actionable: false).
+      Standalone source_2 and source_3 are forbidden — they violate
+      the refresh-only constraint.
+
+  authority_plane:
+    values: [source_1, source_2, source_3, source_9, none]
+
+  classification_values:
+    # §C
+    values:
+      - entity
+      - entity-subtype
+      - attribute
+      - relation
+      - role
+      - abstract-type
+      - view-or-query
+      - operational-artifact
+      - UNKNOWN
+
+  value_categories:
+    # §V
+    values:
+      - constraint_validated
+      - code_validated
+      - relationship_participant
+      - automation_driver
+      - calculation_source
+      - routing_or_status_driver
+      - reporting_or_filtering_value
+      - operator_approved_descriptive_value
+      - migration_continuity
+
+  operator_decision:
+    # §O
+    values:
+      - approved_keep
+      - approved_remove
+      - rejected_remove
+      - pending_review
+
+  question_type:
+    # §Q
+    values:
+      - lookup
+      - analytical
+      - completeness
+    default_when_ambiguous: analytical
+
+  test_result:
+    values: [pass, fail, uncertain]
+
+  agent_cursory_result:
+    values: [recommend_keep, recommend_remove, uncertain]
+
+  agreement_state:
+    values: [agree_keep, agree_remove, disagree, both_uncertain]
+
+  final_recommendation:
+    values: [keep, remove, defer_pending_operator]
+
+  alignment_status:
+    values: [perfectly_aligned, misaligned_workaround_available, ALIGNMENT_IMPOSSIBLE]
+
+  rule_applied:
+    values:
+      - subtype-test
+      - relation-test
+      - attribute-test
+      - evidence-gap
+      - naming-rule
+      - contradiction
+
+  router_status:
+    values: [present, missing]
+    forbidden: [not_checked]
+    description: "not_checked is never valid for a session where activation step 3 was attempted."
+
+  command_values:
+    values:
+      - GENERAL
+      - /schema
+      - /folders
+      - /validate
+      - /trace
+      - /lesson
+      - /learn
+      - /project
+      - /explain
+      - /sql-embody
+      - /sql-validate
+
+# --- Mode Selector (§M) ------------------------------------------------------
+
+mode_selector:
+  description: >
+    The operator declares the active mode at session start. Every validator
+    invoked during the session must receive and honor the selected mode.
+    If a validator cannot accept the selected mode, the agent must halt and
+    report validator incompatibility — never silently use the wrong contract.
+  mode_1:
+    name: "Pure TypeDB"
+    description: >
+      Validators apply Pure TypeDB expectations only. All existing commands
+      operate in this mode by default.
+  mode_2:
+    name: "TypeDB Embodiment using SQL"
+    description: >
+      Validators apply TypeDB intent plus SQL Server embodiment constraints.
+      Adds SQL Embodiment commands, field_value_test, field_review_matrix,
+      proposed_removals, disagreements, and operator_decision workflow.
+  default: 1
+
+# --- Scope (§S) ---------------------------------------------------------------
+
+scope:
+  in_scope:
+    - "Schema design, TypeQL, ER modeling, type hierarchies, role-player design, attribute ownership, polymorphic schemas, relation design, inference-aware modeling, folder taxonomies, vault structures, classification rules, lifecycle structures, validation of schemas or folder trees, and lesson-style explanations."
+    - "Clean-room modeling from legacy examples, provided the legacy system is treated as evidence and not as authority."
+    - "Folder hierarchy design only when it is treated as an ontology problem: every folder is classified as an entity, relation, attribute-bearing view, or operational artifact."
+    - "Mode 2 only: SQL Server embodiment of TypeDB design decisions, field_value_test review of SQL source fields, field governance workflow, and operator-approved removal of legacy fields."
+    - "ontology-axiom-spec and ontology-axiom-compliance companion skills: planned — not yet registered in this workspace; do not route to them until registered."
+  out_of_scope:
+    - "SQL tuning unrelated to model design."
+    - "OS-level file moves, renames, deletes, or broad filesystem cleanup."
+    - "Axiom enforcement implementation (runtime enforcement), distinct from schema modeling guidance."
+    - "Any classification or design the student wants emitted without first using the TypeDB evidence path."
+
+# --- Sources (§R) -------------------------------------------------------------
+
+sources:
+  fixed_evidence_order: [1, 2, 3, 9]
+  order_immutable: true
+  order_rule: "No source may be skipped. No later source may be consulted before all earlier sources have been checked or found unavailable."
+
+  definitions:
+    source_1:
+      mechanism: "user-directive-mcp-search MCP server"
+      tools: [qdrant-find]
+      role: "Primary retrieval authority. The ROUTER-defined vector corpus is always searched first."
+    source_2:
+      mechanism: "user-typedb-snapshot-mcp MCP server"
+      tools: [search_files, read_text_file]
+      role: "Raw evidence fallback and refresh input only. Seeds Source 1 via the evidence-refresh loop. A final TypeDB decision must never proceed directly from Source 2."
+    source_3:
+      mechanism: "https://typedb.com/ documentation"
+      tools: ["Read-only web search/fetch for typedb.com only"]
+      role: "External fallback and refresh input only. Same constraint as Source 2. Used only after Sources 1 and 2 do not contain the needed evidence or are unavailable."
+    source_9:
+      mechanism: "Model-internal knowledge"
+      tools: ["None (LLM inference)"]
+      role: "Last resort. Hard gate required — see §H."
+    source_x:
+      mechanism: "Live typedb-mcp RPC"
+      tools: [database_list, database_schema, query]
+      role: "Forbidden during ontology-tutor execution unless the operator explicitly overrides this skill for a live troubleshooting session."
+
+# --- Transition Criteria (§T) -------------------------------------------------
+
+transition_criteria:
+  description: >
+    A source "does not contain the needed evidence" when — after executing
+    the full retrieval procedure defined for that source — no returned
+    content meets that source's evidence criterion.
+  source_1_criterion: >
+    At least one returned chunk passes the Source 1 citeability test
+    (see source_1_citeability below).
+  source_2_criterion: >
+    Read content names or defines the TypeDB primitive, construct, or
+    constraint being classified, using at least one term from the
+    source_2_phases step 3 term list in the same passage. Search-result
+    paths without read content are not sufficient.
+  source_3_criterion: >
+    The typedb.com page content names or defines the TypeDB primitive,
+    construct, or constraint being classified.
+  transitions:
+    source_1_to_source_2: >
+      Activate the evidence-refresh loop. If Source 2 contains the needed
+      evidence, refresh Source 1 and return to Source 1.
+    source_2_to_source_3: >
+      Only after Source 2 phases 1-6 are complete or the snapshot
+      server/root is unavailable. If Source 3 contains the needed
+      evidence, refresh Source 1 and return to Source 1.
+    source_3_to_source_9: >
+      Only after Source 3 does not contain the needed evidence or is unavailable.
+
+# --- Refresh-Only Constraint --------------------------------------------------
+
+refresh_only_constraint:
+  rule: >
+    Sources 2 and 3 are refresh inputs only. Their role is to feed evidence
+    into Source 1 via the evidence-refresh loop. A final TypeDB decision
+    must cite Source 1 evidence.
+  forbidden_standalone_values: [source_2, source_3]
+
+# --- Refresh-Phase Mutations --------------------------------------------------
+
+refresh_phase_mutations:
+  permitted:
+    - "Appending exact source literals to ROUTER.yaml."
+    - "Executing the vectorizer loader and waiting for completion."
+  boundary: >
+    Refresh activates on evidence absence, completes when vectorization
+    finishes, then restarts from Source 1. Outside of this phase,
+    execution is read-only per §L.
+
+# --- Source 1 Citeability -----------------------------------------------------
+
+source_1_citeability:
+  criterion: "closed"
+  conditions:
+    - condition: "token_count"
+      rule: >
+        The chunk body has token count >= N, where N is a positive integer
+        justified in decision_trace by a citation to Source 1, Source 2, or
+        Source 3 that states or implies a minimum chunk length threshold for
+        evidence use (or project bootstrap YAML treated as Source 2 evidence
+        for the same). If no such N can be justified from Sources 1-3, halt
+        with GATE_FAILED and set details to source_1_chunk_threshold_unset.
+    - condition: "primitive_term_presence"
+      rule: >
+        The chunk text contains at least one token from the TypeDB primitive
+        term list in source_2_phases step 3 (entity, relation, attribute,
+        role, owns, plays, subtype, abstract, rule, inference, TypeQL) OR
+        a define / TypeQL keyword clearly tied to schema syntax in the
+        same chunk.
+  exclusions: "Query hints, ROUTER prose, and situational YAML are not facts."
+
+# --- Source 2 Phases ----------------------------------------------------------
+
+source_2_phases:
+  phases:
+    - phase: 1
+      action: "Read _snapshot/manifest.yaml and docs_snapshot/manifest.yaml when available. (Paths are relative to the MCP server root /typedb-snapshot.)"
+    - phase: 2
+      action: "Search exact user/domain terms with search_files."
+    - phase: 3
+      action: "Search TypeDB primitive terms from the active question."
+      primitive_term_list:
+        - entity
+        - relation
+        - attribute
+        - role
+        - owns
+        - plays
+        - subtype
+        - abstract
+        - rule
+        - inference
+        - TypeQL
+    - phase: 4
+      action: "Search command-specific terms."
+      command_specific_terms:
+        /schema: [define, owns, plays, relates, sub, value]
+        /folders: [taxonomy, classification, hierarchy, folder, artifact]
+        /validate: [schema, constraint, "role player", "attribute ownership"]
+        /lesson: [core concepts, example, guide, manual]
+        /learn: [core concepts, example, guide, manual]
+        /project: [core concepts, example, guide, manual]
+        /explain: [core concepts, example, guide, manual]
+        /trace: [manifest, source_file, content_hash, provenance]
+        /sql-embody: [attribute, owns, relation, entity, cardinality, value]
+        /sql-validate: [attribute, owns, relation, entity, cardinality, value]
+        GENERAL: "Use the matching TypeDB primitive terms plus direct user/domain terms."
+    - phase: 5
+      action: >
+        Read matched manifest, schema, and documentation files with
+        read_text_file in this order: exact filename matches, schema files,
+        docs paths containing command-specific terms, then docs paths
+        containing primitive terms.
+    - phase: 6
+      action: >
+        Record probe_b_search_terms, probe_b_matched_paths,
+        probe_b_read_paths, and probe_b_failure_reason on the
+        decision_trace entry that documents this Source 2 pass
+        (mirror this obligation in §W).
+    - phase: 7
+      action: "Advance to typedb.com only after phases 1-6 complete or the snapshot server/root is unavailable."
+
+# --- Source 9 Hard Gate (§H) --------------------------------------------------
+
+source_9_hard_gate:
+  prompt: >
+    No TypeDB evidence found from Sources 1-3. Source 9 (model-internal)
+    knowledge is available for EXPLANATION ONLY — it is not actionable,
+    not citable, and not authoritative for any classification, naming,
+    hierarchy, or design decision. Proceed with explanation?
+  rules:
+    - "Operator must explicitly approve. If not approved → emit EVIDENCE_EXHAUSTED, halt."
+    - "All Source 9 output must carry authority_source: source_9 and actionable: false."
+    - "Source 9 output does not satisfy the evidence gate for design claims."
+
+# --- Evidence Sufficiency (§E) ------------------------------------------------
+
+evidence_sufficiency:
+  description: >
+    Controls how deep retrieval goes when Source 1 already returns citeable
+    chunks. Orthogonal to the evidence-refresh loop.
+
+  question_type_enum:
+    # Same as enums.question_type — canonical reference
+    values: [lookup, analytical, completeness]
+    default_when_ambiguous: analytical
+
+  minimum_evidence_units:
+    lookup: 2
+    analytical: 4
+    completeness: 5
+
+  evidence_unit_definition: >
+    One citeable Source 1 chunk whose metadata.source_file is distinct from
+    already counted chunks for this session (normalize path separators
+    before compare), OR one file whose full text was read via Source 2
+    read_text_file and listed in probe_b_read_paths for that pass (counts
+    once per distinct path per session).
+
+  saturation:
+    set_name: atomic_claim_hashes
+    set_type: "Short normalized claim strings, SHA-256 hex or project-defined normal form."
+    stop_condition: >
+      After each retrieval round, if the last three rounds added zero new
+      hashes AND evidence_units_achieved >= minimum_evidence_units AND no
+      open contradiction (D) AND adversarial step (E) completed or waived
+      → stop further retrieval.
+    early_saturation_rule: >
+      If saturation occurs before minimum_evidence_units → do not stop;
+      refine queries or escalate to Source 2 per F-triggers.
+
+  contradictions:
+    trigger: >
+      If two citeable chunks make incompatible definitional assertions
+      about the same TypeDB primitive or keyword, retrieval has not converged.
+    action: >
+      Log decision_trace entry rule_applied: contradiction. Run additional
+      Source 1 and/or Source 2 passes until reconciled with an explicit
+      reconciliation note in decision_trace, or emit CONTRADICTION_UNRESOLVED
+      with both citations.
+
+  adversarial_query:
+    requirement: >
+      Before final emission, run at least one qdrant-find whose query
+      negates or challenges the draft conclusion (opposite keyword or
+      "common misconception" pattern).
+    if_counter_evidence: >
+      If a citeable chunk supports counter-evidence, retrieval continues
+      until reconciled in decision_trace.
+    if_no_counter_evidence: >
+      Record evidence_sufficiency.adversarial_query_run: true and proceed.
+
+  time_box:
+    max_search_rounds: 5
+    round_definition: >
+      One round = one batch of retrieval work: one qdrant-find call OR
+      one full Source 2 pass (phases 1-6) OR one typedb.com fetch.
+    exhaustion_action: >
+      If round index reaches 5 without satisfying B and unresolved D →
+      emit EVIDENCE_BUDGET_EXHAUSTED with partial decision_trace and
+      actionable: false for design claims still unsupported.
+
+  f_triggers:
+    description: "Source 2 phases 1-6 required when any holds (unless max_search_rounds already exceeded)."
+    triggers:
+      - "After counting Source 1 distinct source_file among citeable chunks, evidence_units_achieved < minimum_evidence_units."
+      - "Contradiction (D) unresolved after one extra Source 1 round."
+      - "Adversarial query (E) returned citeable counter-evidence not yet reconciled."
+      - "question_type == completeness AND fewer than two distinct paths appear in probe_b_read_paths cumulative AND evidence_units_achieved < minimum_evidence_units + 1."
+
+  input_boundary:
+    # §1
+    max_candidates_per_invocation: 20
+    one_table_per_invocation: true
+    description: >
+      Mode 2 processes one table per invocation. Mode 1 accepts up to 20
+      candidate items per invocation. If the operator submits more than 20
+      candidates, emit INSUFFICIENT_INPUT with recommended_action:
+      "Split into batches of <= 20 candidates."
+
+# --- Tool Permissions (§L) ----------------------------------------------------
+
+tool_permissions:
+  normal_execution:
+    allowed:
+      - { source: 1, mcp: "user-directive-mcp-search", tools: [qdrant-find] }
+      - { source: 2, mcp: "user-typedb-snapshot-mcp", tools: [search_files, read_text_file] }
+      - { source: 3, mechanism: "read-only web search/fetch for typedb.com only" }
+    forbidden:
+      - "Any MCP mutation tool."
+      - "Any file write, edit, move, create, delete, rename, or overwrite operation."
+      - "Any database write or schema mutation."
+      - "Any Qdrant write, upsert, delete, collection mutation, or loader execution."
+      - "Any live TypeDB RPC unless the operator explicitly overrides the tutor authority model."
+  refresh_phase:
+    allowed:
+      - "Appending exact source literals to ROUTER.yaml."
+      - "Executing the vectorizer loader and waiting for completion."
+  read_only_rule: >
+    Normal ontology-tutor execution is evidence-read-only. It may retrieve,
+    inspect, cite, and explain evidence. Outside of the evidence-refresh loop
+    it must not mutate MCP state, filesystem state, Qdrant state, TypeDB
+    state, schema state, or user project files.
+
+# --- Required Files (§Y) -----------------------------------------------------
+
+required_files:
+  canonical_skill_tree: >
+    <root>/40-49-ai-agents-and-prompts/43-rules-skills-subagents/43.01-custom-skills/ontology-tutor/
+  expected_live_files:
+    - filename: "SKILL.md"
+      role: "Procedures, narratives, and rationale."
+    - filename: "CONTRACT.yaml"
+      role: "All deterministic definitions (this file)."
+    - filename: "ROUTER.yaml"
+      role: "Machine contract for the tutor corpus and routing metadata. Required for ingest and useful for session grounding."
+  deployment_binding_rule: >
+    All deployment bindings — snapshot root, Qdrant URL, Qdrant collection
+    name, vectorizer loader path, and bootstrap corpus root — are defined
+    in ROUTER.yaml and must be read from there. Do not hardcode deployment
+    values in SKILL.md or CONTRACT.yaml.
+  router_missing_behavior: >
+    If ROUTER.yaml is missing, do not pretend the vector corpus contract is
+    available. If user-directive-mcp-search still returns data, continue
+    with Source 1 and mark the session ROUTER_MISSING; follow the evidence
+    pipeline in §R when Source 1 does not contain the needed evidence.
+    Else (no data from Source 1 MCP), treat the session as AUTHORITY_DOWN
+    for the Source 1 plane and proceed per §R without treating empty MCP
+    results as evidence.
+
+# --- ROUTER and Corpus Law ----------------------------------------------------
+
+router_corpus_law:
+  rules:
+    - "--ontology-router is required by the loader."
+    - "Non-router ingest scopes (full, manifest, manifest_router_union, custom) were removed from the intended design."
+    - "user-directive-mcp-search must contain the tutor corpus and only the tutor corpus."
+    - "vector_source_file_registry names the snapshot-relative literals and POSIX globs under the snapshot root defined in ROUTER.yaml."
+    - "ontology_skill_bootstrap_corpus_* entries may add exact bootstrap YAML evidence when the operator promotes continuity records into the vector corpus."
+    - "situational_retrieval_hints_only_not_evidence may steer search terms but is never citeable evidence."
+    - "typedb_directive_search_binding is the current binding key. Historical directive_mcp_search_binding and typedb_snapshot_search_binding may appear in old bootstraps only."
+
+# --- Commands (§D) ------------------------------------------------------------
+
+commands:
+  mode_1:
+    - command: GENERAL
+      description: "Any modeling question without a slash command."
+    - command: /schema
+      description: "Produce or revise a schema model and, when requested, TypeQL. Ground classifications in TypeDB evidence."
+      operand: "<domain>"
+    - command: /folders
+      description: "Produce a folder hierarchy by treating folders as ontology artifacts, not arbitrary containers."
+      operand: "<domain>"
+    - command: /validate
+      description: "Audit an existing TypeQL schema, ER model, or folder tree against evidence."
+      operand: "<input>"
+    - command: /trace
+      description: "Re-emit the decision trace and evidence source paths for the most recent answer."
+    - command: /lesson
+      description: "Teaching command. Obeys §R."
+    - command: /learn
+      description: "Teaching command. Obeys §R."
+    - command: /project
+      description: "Teaching command. Obeys §R."
+    - command: /explain
+      description: "Teaching command. Obeys §R."
+  mode_2:
+    - command: /sql-embody
+      description: "Take a TypeDB design or existing SQL DDL and produce SQL Server-compatible embodiment. Scoped to one table per invocation (§1). Runs field_value_test and field_review_matrix on every source field."
+      operand: "<table>"
+    - command: /sql-validate
+      description: "Audit an existing SQL embodiment against TypeDB intent and field governance rules. Scoped to one table per invocation (§1)."
+      operand: "<table>"
+
+# --- Pipelines (§P) ----------------------------------------------------------
+
+pipelines:
+  mode_1:
+    steps:
+      - step: 0
+        action: "Scope check"
+        refs: ["§S"]
+        description: "Classify the request against §S. If out-of-scope → emit OUT_OF_SCOPE (§X)."
+      - step: 1
+        action: "Evidence refresh"
+        refs: ["§R", "§T"]
+        description: "Run the evidence pipeline — confirm Source 1 contains the needed evidence."
+      - step: 2
+        action: "Identify TypeDB pattern"
+        refs: ["§C"]
+        description: >
+          For each candidate, match to exactly one TypeDB reference pattern
+          from this closed list: entity, relation, role, attribute, ownership,
+          subtyping, inference, or query pattern. The match must be supported
+          by at least one citeable Source 1 chunk. If no citeable chunk
+          supports a match → assign UNKNOWN and proceed to step 7.
+      - step: 3
+        action: "Classify candidates"
+        refs: ["§C"]
+        description: "Classify each candidate as exactly one value from §C."
+      - step: 4
+        action: "Subtype test"
+        description: >
+          A subtype is justified only when the child type owns >= 1
+          attribute the parent does not OR plays >= 1 role the parent
+          does not, per cited TypeDB evidence in Source 1.
+      - step: 5
+        action: "Relation test"
+        description: >
+          A relation is justified only when it names a verb-phrase the
+          participants alone do not name OR is referenced as a role-player
+          in another relation, per cited TypeDB evidence in Source 1.
+      - step: 6
+        action: "Attribute test"
+        description: >
+          If the thing describes one owner and has no independent role
+          structure, model it as an attribute.
+      - step: 7
+        action: "Evidence-gap"
+        description: >
+          When none of the subtype, relation, or attribute-test predicates
+          applies and evidence is insufficient → classify as UNKNOWN with
+          rule_applied: evidence-gap in decision_trace.
+      - step: 8
+        action: "Generate decision_trace"
+        refs: ["§K"]
+        description: "Generate decision_trace for every emitted item (pipeline step order)."
+      - step: 9
+        action: "Generate content body"
+        refs: ["§Z"]
+        description: >
+          Generate the command-specific content body. Apply the correction
+          gate (§Z) when input contains malformed TypeQL.
+      - step: 10
+        action: "Run validation gates"
+        refs: ["§G"]
+      - step: 11
+        action: "Emit output"
+        refs: ["§W", "§N"]
+
+  mode_2:
+    one_table_per_invocation: true
+    steps:
+      - step: 0
+        action: "Scope check and parse gate"
+        refs: ["§S", "§Z"]
+        description: >
+          Classify the request against §S. If out-of-scope → emit OUT_OF_SCOPE.
+          Then inspect DDL/SQL input for syntactic validity and structural
+          completeness. If invalid → emit MALFORMED_INPUT (§X), present
+          correction table per §Z, halt. If semantically ambiguous → log
+          in decision_trace, continue.
+      - step: 1
+        action: "Evidence refresh"
+        refs: ["§R", "§T"]
+        description: "Run the evidence pipeline — confirm Source 1 contains the needed evidence."
+      - step: 2
+        action: "Field value test"
+        refs: ["§V", "§F"]
+        description: >
+          For every source SQL field, run field_value_test: assign
+          source_nullability, source_type, and at least one value_categories
+          entry from §V. Set test_result. Populate evidence. Populate
+          failure_reason or uncertainty_reason as applicable.
+      - step: 3
+        action: "Cursory semantic review"
+        refs: ["§F"]
+        description: >
+          For every field, independently of the field_value_test result,
+          apply the cursory_semantic_review_criteria predicates defined in §F.
+          Evaluate recommend_keep first; if no condition is met, evaluate
+          recommend_remove; if not all conditions are met, assign uncertain.
+          Record the agent_cursory_result per field.
+        shared_with: null
+      - step: 4
+        action: "Field review matrix"
+        refs: ["§F"]
+        description: >
+          Populate field_review_matrix for every field by comparing cursory
+          review result against field_value_test result: agree_keep,
+          agree_remove, disagree, or both_uncertain. operator_decision
+          required before finalizing.
+      - step: 5
+        action: "Field removal governance"
+        refs: ["§F", "§O"]
+        description: >
+          No field may be excluded from mirroring (removed_from_legacy)
+          unless operator_decision = approved_remove.
+      - step: 6
+        action: "TypeDB intent mapping"
+        description: >
+          Produce TypeDB intent mapping for all retained fields. Map each
+          field to one TypeDB primitive consistent with Mode 1 steps 2-6.
+          Apply subtype, relation, and attribute tests where asserted.
+        shared_with: "mode_1 steps 2-6"
+      - step: 7
+        action: "Generate decision_trace"
+        refs: ["§K"]
+        description: "Generate decision_trace for every emitted item (pipeline step order)."
+      - step: 8
+        action: "Generate SQL embodiment"
+        description: >
+          Generate the SQL Server-compatible CREATE TABLE and supporting
+          constraints embodying the TypeDB intent mapping from step 6.
+      - step: 9
+        action: "Alignment check"
+        refs: ["§W"]
+        description: >
+          For every field, compare TypeDB construct (step 6) against SQL
+          construct (step 8). Produce alignment_report per §W. If
+          ALIGNMENT_IMPOSSIBLE → emit error (§X), halt.
+      - step: 10
+        action: "Run validation gates"
+        refs: ["§G"]
+        description: "Run all gates including alignment_gate."
+      - step: 11
+        action: "Emit output"
+        refs: ["§W", "§N"]
+
+# --- Field Governance (§F) ----------------------------------------------------
+
+field_governance:
+  canonical_rules:
+    - "The legacy SQL reference is read-only. No field is ever removed from it."
+    - "A field in the legacy reference is mirrored into the new SQL schema unless the operator explicitly approves exclusion (operator_decision = approved_remove)."
+    - "removed_from_legacy means excluded from mirroring into the new schema; it does not modify the legacy reference in any way."
+    - "No field may be excluded from mirroring unless operator_decision = approved_remove. Fields with pending_review, approved_keep, or rejected_remove are always mirrored."
+
+  value_requirement: >
+    A field may stay only if it provides at least one closed-category
+    value from the value_categories enum (§V).
+
+  nullability_rule: >
+    Nullability alone is not the removal criterion. A nullable field that
+    provides value stays. A nullable field that provides no value should
+    fail field_value_test, but exclusion from mirroring still requires
+    operator_decision = approved_remove.
+
+  removal_state_rules:
+    approved_keep: "Field remains and receives the tightest applicable SQL embodiment."
+    approved_remove: "Field may move to removed_from_legacy."
+    rejected_remove: "Field remains and must receive a keep rationale plus the tightest applicable SQL embodiment."
+    pending_review: "No removal may occur; field remains outside removed_from_legacy."
+
+  gate_naming_convention: >
+    Gate names appear Title-Case-With-Hyphens in prose; in the Output
+    Contract YAML they appear as snake_case (hyphens become underscores).
+
+  cursory_semantic_review_criteria:
+    description: >
+      Three deterministic predicates for Mode 2 step 3. Evaluate in order:
+      recommend_keep first → recommend_remove → uncertain.
+    recommend_keep:
+      operator: ANY-of
+      conditions:
+        - "Field name or type maps to a recognizable domain concept (business entity, measurement, status, identifier, or relationship key)."
+        - "Field participates in a foreign key, unique constraint, or index in the source DDL."
+        - "Field name follows a naming pattern consistent with active use (e.g., is_*, has_*, *_date, *_id, *_code, *_status, *_type)."
+    recommend_remove:
+      operator: ALL-of
+      conditions:
+        - "Field name suggests audit/tracking metadata with no downstream consumer (e.g., created_by, modified_date, row_version) AND no FK or constraint references it."
+        - "Field is nullable AND has no default value AND no CHECK constraint."
+        - "Field does not appear in any index, view definition, or stored procedure signature visible in the provided DDL."
+    uncertain:
+      rule: "If recommend_keep conditions are not met AND recommend_remove conditions are not ALL met → assign uncertain."
+
+# --- Decision Trace Schema (§K) -----------------------------------------------
+
+decision_trace_schema:
+  fields:
+    - item
+    - classification
+    - canonical_reference
+    - authority_source
+    - rule_applied
+    - probe_b_search_terms
+    - probe_b_matched_paths
+    - probe_b_read_paths
+    - probe_b_failure_reason
+
+# --- Correction Gate (§Z) ----------------------------------------------------
+
+correction_gate:
+  description: >
+    Applies when input contains malformed TypeQL (Mode 1) or syntactically
+    invalid/structurally corrupt DDL/SQL (Mode 2). Hard-stop and present
+    the operator with a table of up to 3 corrections.
+  table_format:
+    columns: [Option, Proposed Correction, "Why This Is Most Correct"]
+    row_order:
+      - "A (Recommended)"
+      - "B"
+      - "C"
+  rule: "No correction is applied without explicit operator approval."
+
+# --- Validation Gates (§G) ---------------------------------------------------
+
+gates:
+  mode_1_and_mode_2:
+    - gate: authority_gate
+      rule: "authority_source must be a value from the closed enum in §A."
+    - gate: read_only_gate
+      rule: "Only approved read-only evidence tools were used during normal execution; refresh-phase mutations are confined to the refresh phase only."
+    - gate: source_x_gate
+      rule: "No live typedb-mcp (Source X) evidence was used unless the operator explicitly overrode the skill."
+    - gate: closed_world_gate
+      rule: "Every classification is in the allowed set (§C)."
+    - gate: evidence_gate
+      rule: "Every non-UNKNOWN design claim has a citation to Source 1."
+    - gate: hierarchy_gate
+      rule: "Every subtype passes the subtype test."
+    - gate: relation_gate
+      rule: "Every relation passes the relation test, including relations asserted in Mode 2 TypeDB intent mapping."
+    - gate: naming_gate
+      rule: "TypeQL identifiers use kebab-case unless the cited source uses a different literal."
+    - gate: trace_completeness_gate
+      rule: "Every emitted item appears in decision_trace."
+    - gate: source_gap_gate
+      rule: >
+        If Source 1 was insufficient, Source 2 phases 1-6 were completed
+        or the snapshot server/root was unavailable; and §E triggers were
+        satisfied or recorded in evidence_sufficiency with search_round
+        <= max_search_rounds.
+    - gate: yaml_first_gate
+      rule: "The assistant message begins with a single ```yaml fence per §N (unless operator waived format)."
+    - gate: mode_gate
+      rule: "The active mode (1 or 2) is recorded in the output contract; if a validator required by the mode is unavailable, halt with VALIDATOR_INCOMPATIBLE."
+
+  mode_2_additional:
+    - gate: field_coverage_gate
+      rule: "Every source SQL field has a field_value_test entry and a field_review_matrix entry."
+    - gate: operator_decision_gate
+      rule: "Every field in field_review_matrix has a non-null operator_decision."
+    - gate: removal_approval_gate
+      rule: "removed_from_legacy contains only fields where operator_decision = approved_remove."
+    - gate: no_auto_removal_gate
+      rule: "No field moved to removed_from_legacy without an explicit operator_decision = approved_remove record in proposed_removals."
+    - gate: source_1_authority_gate
+      rule: "The TypeDB intent mapping cites Source 1 evidence only, per the refresh-only constraint."
+    - gate: alignment_gate
+      rule: "FAIL if alignment_report contains any ALIGNMENT_IMPOSSIBLE row."
+
+# --- Message Shape (§N) -------------------------------------------------------
+
+message_shape:
+  rules:
+    - "The first non-empty line of the message is the opening of a single Markdown fenced code block whose info string is exactly yaml."
+    - "That block contains the complete machine contract for the turn."
+    - "No prose (no headings, tables, labels, or commentary) may appear before the opening ```yaml line."
+    - "Optional prose after the closing ``` line is discouraged; fold into content or request format waiver."
+  minimum_fields:
+    - skill_id
+    - command
+    - mode
+    - authority_source
+    - authority_probed_at
+    - authority_plane
+    - router
+    - decision_trace
+    - evidence_sufficiency
+    - validation
+    - menu
+  mode_2_additional_fields:
+    - sql_embodiment
+  error_fields:
+    - error
+  format_waivers:
+    - "format: bullets-only"
+    - "format: prose-only"
+    - "format: prose-after-yaml"
+  waiver_rule: >
+    If the operator explicitly sets a format waiver, the YAML-first rule is
+    waived only for that message, but router.router_status and
+    router.router_version must still reflect the ROUTER read.
+  menu_convention: >
+    The menu field lists a fixed teaching-oriented subset of commands;
+    it omits GENERAL by convention (the operator still sets command: GENERAL
+    in YAML when no slash command applies).
+  menu_value: "/learn /lesson /project /explain /schema /folders /validate /trace /sql-embody /sql-validate"
+
+# --- Output Contract (§W) ----------------------------------------------------
+
+output_contract:
+  mode_1_schema:
+    skill_id: "ontology-tutor"
+    command: "<GENERAL | /learn | /lesson | /project | /explain | /schema | /folders | /validate | /trace | /sql-embody | /sql-validate>"
+    mode: "<1 | 2>"
+    authority_source: "<source_1 | source_1+source_2 | source_1+source_3 | source_9 | NONE>"
+    authority_probed_at: "<ISO-8601 timestamp>"
+    authority_plane: "<source_1 | source_2 | source_3 | source_9 | none>"
+    router:
+      router_status: "<present | missing>"
+      router_version: "<value | UNKNOWN>"
+    evidence_sufficiency:
+      question_type: "<lookup | analytical | completeness>"
+      minimum_evidence_units: "<int>"
+      evidence_units_achieved: "<int>"
+      search_round: "<int>"
+      saturated: "<bool>"
+      adversarial_query_run: "<bool>"
+    content: "<command-specific body; human explanation lives here>"
+    decision_trace:
+      - item: "<name>"
+        classification: "<entity | entity-subtype | attribute | relation | role | abstract-type | view-or-query | operational-artifact | UNKNOWN>"
+        canonical_reference: "<qdrant source_file, snapshot path, TypeQL type, or typedb.com URL>"
+        authority_source: "<source_1 | source_1+source_2 | source_1+source_3 | source_9>"
+        rule_applied: "<subtype-test | relation-test | attribute-test | evidence-gap | naming-rule | contradiction>"
+        probe_b_search_terms: "<list | null>"
+        probe_b_matched_paths: "<list | null>"
+        probe_b_read_paths: "<list | null>"
+        probe_b_failure_reason: "<string | null>"
+    validation:
+      authority_gate: "PASS"
+      read_only_gate: "PASS"
+      source_x_gate: "PASS"
+      closed_world_gate: "PASS"
+      evidence_gate: "PASS"
+      hierarchy_gate: "PASS"
+      relation_gate: "PASS"
+      naming_gate: "PASS"
+      trace_completeness_gate: "PASS"
+      source_gap_gate: "PASS"
+      yaml_first_gate: "PASS"
+      mode_gate: "PASS"
+    menu: "/learn /lesson /project /explain /schema /folders /validate /trace /sql-embody /sql-validate"
+
+  mode_2_additional:
+    sql_embodiment:
+      field_value_test:
+        - table_name: "<string>"
+          field_name: "<string>"
+          source_nullability: "<nullable | not_null>"
+          source_type: "<string>"
+          value_categories: ["<one or more from §V>"]
+          test_result: "<pass | fail | uncertain>"
+          evidence: "<string>"
+          failure_reason: "<string | null>"
+          uncertainty_reason: "<string | null>"
+          operator_decision: "<approved_keep | approved_remove | rejected_remove | pending_review>"
+      field_review_matrix:
+        - table_name: "<string>"
+          field_name: "<string>"
+          agent_cursory_result: "<recommend_keep | recommend_remove | uncertain>"
+          field_value_test_result: "<pass | fail | uncertain>"
+          agreement_state: "<agree_keep | agree_remove | disagree | both_uncertain>"
+          detailed_review_required: "<boolean>"
+          final_recommendation: "<keep | remove | defer_pending_operator>"
+          operator_decision: "<approved_keep | approved_remove | rejected_remove | pending_review>"
+      proposed_removals:
+        - field_name: "<string>"
+          evidence: "<string>"
+          reason: "<string>"
+          downstream_impact: "<string>"
+          operator_decision: "<approved_remove | pending_review>"
+      disagreements:
+        - field_name: "<string>"
+          agent_cursory_result: "<recommend_keep | recommend_remove | uncertain>"
+          field_value_test_result: "<pass | fail | uncertain>"
+          detailed_review: "<string>"
+          final_recommendation: "<keep | remove>"
+          operator_decision: "<approved_keep | approved_remove | rejected_remove | pending_review>"
+      removed_from_legacy: []
+      alignment_report:
+        - field_name: "<string>"
+          typedb_construct: "<string>"
+          sql_construct: "<string>"
+          alignment_status: "<perfectly_aligned | misaligned_workaround_available | ALIGNMENT_IMPOSSIBLE>"
+          notes: "<string | null>"
+      sql_embodiment_validation:
+        yaml_first_gate: "PASS"
+        field_coverage_gate: "PASS"
+        operator_decision_gate: "PASS"
+        removal_approval_gate: "PASS"
+        no_auto_removal_gate: "PASS"
+        source_1_authority_gate: "PASS"
+        alignment_gate: "PASS"
+
+# --- Error Definitions (§X) --------------------------------------------------
+
+error_definitions:
+  schema:
+    skill_id: "ontology-tutor"
+    command: "<attempted-command>"
+    mode: "<1 | 2>"
+    authority_source: "NONE"
+    error:
+      code: "<error code>"
+      message: "<one-line description>"
+      details: "<which source, file, MCP, gate, or mode constraint failed>"
+      recommended_action: "<specific next step>"
+    menu: "/learn /lesson /project /explain /schema /folders /validate /trace /sql-embody /sql-validate"
+
+  codes:
+    - code: AUTHORITY_DOWN
+      description: "Source 1, Source 2, and Source 3 are unavailable."
+    - code: EVIDENCE_EXHAUSTED
+      description: "Sources 1-3 attempted in order, none contained the needed evidence, and Source 9 gate was declined."
+    - code: ROUTER_MISSING
+      description: "ROUTER.yaml is missing or unreadable."
+    - code: GATE_FAILED
+      description: "A validation gate rejected the draft (including source_1_chunk_threshold_unset)."
+    - code: INSUFFICIENT_INPUT
+      description: "The prompt omits a required operand for the active command."
+    - code: OUT_OF_SCOPE
+      description: "The request is outside this skill. Set recommended_action to an alternative skill name if one clearly applies."
+    - code: VALIDATOR_INCOMPATIBLE
+      description: "The active mode requires a validator that cannot accept the selected mode."
+    - code: MODE_REQUIRED
+      description: "A mode 2 command was invoked but no mode was declared and default mode 1 does not support it."
+    - code: REFRESH_FAILED
+      description: "The evidence refresh loop failed."
+      sub_codes:
+        - VECTORIZER_UNAVAILABLE
+        - SOURCE_NOT_INGESTED
+    - code: ALIGNMENT_IMPOSSIBLE
+      description: "A Mode 2 field cannot be aligned to a SQL construct and no workaround can meet the intent."
+    - code: MALFORMED_INPUT
+      description: "The provided DDL/SQL (Mode 2) or TypeQL (Mode 1) is syntactically invalid or structurally corrupt."
+    - code: CONTRADICTION_UNRESOLVED
+      description: "Two citeable evidence chunks make incompatible definitional assertions; additional retrieval did not reconcile."
+    - code: EVIDENCE_BUDGET_EXHAUSTED
+      description: "§E(F) max_search_rounds reached before B satisfied or D cleared; partial trace only."
+
+# --- Loader Design (§J) ------------------------------------------------------
+
+loader_design:
+  required_flag: "--ontology-router PATH"
+  default_mode: "incremental hash dedup"
+  cache_key: "SHA-256 of pre-banner body bytes (body_text), not bannered text."
+  banner_rule: "Banners are still embedded for search context."
+  rebuild_flag: "--rebuild (opt-in: when metadata stamps must refresh or incremental repair is insufficient)"
+  chunk_caps: "--max-chunks-per-file, --max-total-chunks (opt-in)"
+  verify: "--strict-mcp --verify-router-qdrant"
+  verify_compare: "(source_file, chunk_index, content_hash)"
+
+# --- Corpus and Archive Policy ------------------------------------------------
+
+corpus_archive_policy:
+  runtime_evidence_rule: >
+    Runtime evidence for design classifications follows the pipeline
+    defined in §R. Source 9 output does not satisfy the evidence gate
+    for design claims (see §H).
+  archive_rule: >
+    Folders named _ar/ anywhere in the workspace are dead archives. They
+    must never be read, referenced, or used by this skill or any dependent
+    process under any circumstances.
+
+# --- Anti-Drift Invariants (§I) -----------------------------------------------
+
+invariants:
+  - id: 1
+    assertion: "Do not use live typedb-mcp (Source X) as tutor authority."
+  - id: 2
+    assertion: "Do not treat ROUTER hints or archived references as evidence."
+  - id: 3
+    assertion: "Do not stop after a weak vector search; follow the evidence pipeline in §R."
+  - id: 4
+    assertion: "Do not stop Source 2 until the fixed Source 2 phases complete or the snapshot server/root is unavailable."
+  - id: 5
+    assertion: "Do not reintroduce non-router ingest scopes into the tutor vector corpus."
+  - id: 6
+    assertion: "Do not let banner or metadata changes become source-content cache keys."
+  - id: 7
+    assertion: "Do not collapse UNKNOWN into a guess."
+  - id: 8
+    assertion: "Same evidence and same input should produce the same classification and trace order."
+  - id: 9
+    assertion: "Do not embed deployment-specific paths, URLs, collection names, or project-specific filenames in SKILL.md or CONTRACT.yaml. All deployment bindings belong in ROUTER.yaml."
+  - id: 10
+    assertion: "Do not exclude any field from mirroring (removed_from_legacy) without operator approval. See §F for the canonical rule."
+  - id: 11
+    assertion: "Do not proceed from Source 2 or Source 3 directly for any TypeDB design decision; they are refresh inputs only."
+  - id: 12
+    assertion: "Do not use the wrong validator contract for the active mode; halt with VALIDATOR_INCOMPATIBLE instead."
+  - id: 13
+    assertion: "Do not silently weaken mode 1 Pure TypeDB behavior while executing mode 2 SQL Embodiment operations."
+  - id: 14
+    assertion: "Do not use any phrase meaning sufficient, adequate, enough, or directly supports as evidence criteria. The only permitted criterion is contains the needed evidence as defined in §T."
