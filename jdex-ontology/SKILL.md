@@ -1,6 +1,6 @@
 ---
 name: jdex-ontology
-description: "Deterministic Johnny.Decimal / JDex classification engine — universal JD spec (johnnydecimal.com v6.5.0) layered with Bobby's C:\\dev governance (AGENTS-01-dev.md). Use this skill whenever the user mentions JDex, Johnny.Decimal, JD, AC.ID, SYS.AC.ID, AC.ID+SUB, area/category/ID, standard zeros (AC.00-09), the Librarian, jdlint, jd-doctor, jd-mcp, scaffold.py, seed.py, validate.py, expand-an-area, extend-the-end, multiple systems, partially nested vs fully nested JDex, metadata above-the-line, MOC vs header IDs, system expansion, the 10x10 cap, the no-more-than-10 rule, index-spec, or any question about WHERE a file or folder belongs under C:\\dev. Also trigger for: 'where does this go', 'is this in the right folder', 'should this be 41 or 43', 'is this an area or a category', 'what's the AC.ID for X', 'JDex-conformant?', 'does this need a new ID', 'do I need to expand-an-area', 'should I use a new system', 'graduate this artifact', 'is this PARA or dev', 'reorganize C:\\dev', 'lint my JDex', 'what's in 00.00', 'AC.10 reserved?', 'inbox draining', 'partially nested or fully nested'. When in doubt, trigger — a missed JDex question is worse than a bad trigger. Does NOT apply to PARA classification (use para-ontology) and never operates on paths outside C:\\dev unless explicitly told the system identifier."
+description: "Deterministic Johnny.Decimal / JDex classification engine — universal JD spec (johnnydecimal.com v6.5.0) layered with Bobby's C:\\dev governance (AGENTS-01-dev.md). Use this skill whenever the user mentions JDex, Johnny.Decimal, JD, AC.ID, SYS.AC.ID, AC.ID+SUB, area/category/ID, standard zeros (AC.00-09), the Librarian, jdlint, jd-doctor, jd-mcp, scaffold.py, seed.py, validate.py, expand-an-area, extend-the-end, multiple systems, MOC vs header IDs, system expansion, the 10x10 cap, the no-more-than-10 rule, index-spec, or any question about WHERE a file or folder belongs under C:\\dev. Also trigger for: 'where does this go', 'is this in the right folder', 'should this be 41 or 43', 'is this an area or a category', 'what's the AC.ID for X', 'JDex-conformant?', 'does this need a new ID', 'do I need to expand-an-area', 'should I use a new system', 'graduate this artifact', 'reorganize C:\\dev', 'lint my JDex', 'what's in 00.00', 'AC.10 reserved?', 'inbox draining'. When in doubt, trigger — a missed JDex question is worse than a bad trigger. Operates only on paths under C:\\dev (and registered sibling JD systems declared in jdex.yaml)."
 ---
 
 # JDEX Ontology — Deterministic Classification Engine
@@ -47,7 +47,7 @@ Three invariants follow from this analogy:
 | Field | Value |
 |---|---|
 | Mission | Classify any artifact against the JDex. Never invent placement. Emit a decision trace + validation gates. |
-| Scope | `C:\dev` and any registered sibling system (per `system.multiple_systems` in `jdex.yaml`). PARA → handoff to `para-ontology`. |
+| Scope | `C:\dev` and any registered sibling system (per `system.multiple_systems` in `jdex.yaml`). |
 | Authority model | Layer-2 (C:\dev AGENTS-01) overrides Layer-1 (universal JD). Within Layer-2: schema → jdex.yaml → filesystem. |
 | Input rules | Filename, content hint (optional), user-stated purpose. Ignore convenience, recency, file-mtime, or "where similar files happen to be." |
 | Output contract | A `classification:` YAML block (§16). No prose outside the block unless the user asked. |
@@ -338,8 +338,8 @@ For Bobby's C:\dev, the Librarian role is governed by AGENTS-01 §5 (precedent g
 ### STEP 0 — In-scope check
 
 Ask sequentially:
-- "Is the proposed path outside `C:\dev`?" → out of scope. If PARA, handoff to `para-ontology`. STOP.
-- "Is this a new governance / rule file?" → AGENTS-01 §10 forbids new rule files anywhere under `C:\dev` or `C:\PARA`. Refuse and route to `AGENTS-01-dev.md` / `AGENTS-02-para.md`.
+- "Is the proposed path outside `C:\dev`?" → out of scope. STOP.
+- "Is this a new governance / rule file?" → AGENTS.md forbids new rule files anywhere under `C:\dev`. Refuse and route to `AGENTS-01-dev.md`.
 - "Is this a `SKILL.md` / `COMMAND.md` for a Cursor capability?" → canonical home is `43.01-custom-skills\<name>\` / `43.02-commands\<name>\` (precedent `cursor-agent-skill-bundle`). Use that. STOP.
 - "Is this the workspace-root auto-load shim (`C:\dev\AGENTS.md`) or a dot-prefixed tool folder?" → exempt per §17. No new placement decision required.
 
@@ -384,7 +384,7 @@ Default answer: **no** — the existing AC.ID accommodates the file.
 ### STEP 5 — Cross-area lifecycle check (Bobby AGENTS-01 §10)
 
 - **Graduation:** `47 outputs-and-artifacts` and `64 llm-experiments` are staging. Keepers move to permanent homes (typically 41–46 for AI work).
-- **Archive integrity:** `80-89 archive` takes whole project folders **intact** — never splinter. Never split across IDs. Never split across PARA and JDex.
+- **Archive integrity:** `80-89 archive` takes whole project folders **intact** — never splinter. Never split across IDs.
 - **Reserved:** `90-99` is locked; JD 13.31 "Extend the end" only.
 - **Permanent:** `00-09` is permanent. Touch with care.
 - **Area-scoped rules:** consult each area's `description` field. Do not over-generalize.
@@ -392,7 +392,7 @@ Default answer: **no** — the existing AC.ID accommodates the file.
 ### STEP 6 — External path reference gate (AGENTS-01 §14)
 
 Scan content for filesystem paths outside `C:\dev`:
-- `C:\code`, `C:\PARA`, `C:\staging`, `C:\vault`, `C:\projects`, `C:\work`
+- `C:\code`, `C:\staging`, `C:\vault`, `C:\projects`, `C:\work`
 - `%USERPROFILE%`, `%APPDATA%`, `%LOCALAPPDATA%` expansions outside `C:\dev`
 - Relative paths (`../`, `_staging/`) resolving outside `C:\dev`
 - UNC paths unless explicitly approved
@@ -554,9 +554,9 @@ action_required: <what the user must clarify or approve>
 
 ## 19. Universal NO-NEW-RULE-FILES constraint (Bobby AGENTS-01 §10)
 
-No new file anywhere under `C:\dev` or `C:\PARA` whose purpose is to define / restate / extend / enforce workspace governance rules. No new `.mdc` rules. No new `.md` under `.claude\rules\` or `.cursor\rules\` beyond existing thin pointers. No new `RULES.md` / `GOVERNANCE.md` / `POLICY.md`. No substantive rule content in `workspace-rules.mdc` or `CLAUDE.md`.
+No new file anywhere under `C:\dev` whose purpose is to define / restate / extend / enforce workspace governance rules. No new `.mdc` rules. No new `.md` under `.claude\rules\` or `.cursor\rules\` beyond existing thin pointers. No new `RULES.md` / `GOVERNANCE.md` / `POLICY.md`. No substantive rule content in `workspace-rules.mdc` or `CLAUDE.md`.
 
-If a rule is needed → add it to `AGENTS-01-dev.md` or `AGENTS-02-para.md` and follow the index-split procedure in the governance decision record.
+If a rule is needed → add it to `AGENTS-01-dev.md` and follow the index-split procedure in the governance decision record.
 
 ---
 
@@ -621,7 +621,7 @@ The written procedure's right home: `01.02-lifecycle-rules\` (currently empty pe
 | "Where does this slash-command go?" | `43.02-commands\<command-kebab-name>\COMMAND.md`. |
 | "Where does a new prompt go?" | `41-prompts\…` — run `jd_propose` to choose the category. |
 | "Where does a bootstrap YAML go?" | `46.01-bootstrap-yamls\` — filename `<system-name>_<YYMMDD>-<HHMM>.yaml`. |
-| "Where does working memory go?" | `46.02-working-memory\` (AGENTS.md, AGENTS-01-dev.md, AGENTS-02-para.md, CLAUDE.md). |
+| "Where does working memory go?" | `46.02-working-memory\` (AGENTS.md, AGENTS-01-dev.md, CLAUDE.md). |
 | "Where do MCP server configs go?" | `44-mcp-servers\…`. |
 | "Where does a SQL Server saved query go?" | `30-39 data-and-databases` — run `jd_propose`. |
 | "Where do session output artifacts go?" | `47-outputs-and-artifacts\` — staging; graduate keepers to permanent homes. |
@@ -637,7 +637,6 @@ The written procedure's right home: `01.02-lifecycle-rules\` (currently empty pe
 | "Multi-home: file fits two IDs." | Pick one canonical home; add `relatesTo: [<other AC.ID>]` metadata. Never duplicate. |
 | "JDex within a JDex?" | The `00.00` entry IS the system's own JDex entry — recursive but trivial. Not duplication; not infinite recursion. |
 | "Should I use header-IDs (`AC.41-AC.49`) or MOCs?" | Header-IDs for stable addressable structure (max 9 children); MOCs (frontmatter `parent:`/`children:`) for flexible composition. |
-| "PARA project — does it map to a JD area?" | NO. A PARA project maps roughly to a single JD ID, not an area. |
 
 ---
 
@@ -651,8 +650,7 @@ The written procedure's right home: `01.02-lifecycle-rules\` (currently empty pe
 4. **Inbox `AC.01` accumulating.** Drain it.
 5. **Inconsistent metadata keys.** `Where is it?` vs `Location:` breaks querying.
 6. **Fully-nested Obsidian pattern.** Universal consensus: doesn't work.
-7. **PARA project → JD area mapping.** A project is an ID, not an area.
-8. **Extending-the-end frequently.** Symptom of bad system design — split to multiple systems or expand-an-area.
+7. **Extending-the-end frequently.** Symptom of bad system design — split to multiple systems or expand-an-area.
 9. **Combining expand-an-area with extend-the-end.** Forbidden.
 10. **Hex / multi-letter SYS prefixes.** SYS is strict `[A-Z][0-9][0-9]`.
 11. **Duplicate IDs.** Globally unique.
@@ -662,33 +660,20 @@ The written procedure's right home: `01.02-lifecycle-rules\` (currently empty pe
 
 13. **Folder-first creation.** Schema entry first.
 14. **Saving to a "convenient temp location."** Forbidden.
-15. **Splintering a project across PARA and JDex.**
-16. **Creating new `RULES.md` / `GOVERNANCE.md` / `POLICY.md`.** Forbidden.
-17. **Authoring SKILL.md / COMMAND.md outside `43.01-custom-skills\<name>\` / `43.02-commands\<name>\`.**
-18. **"Second source of truth" under `%USERPROFILE%\.cursor\skills-cursor\`.** Junctions/shortcuts only.
-19. **Hand-editing `00.01 README.md` or `00.04 JDex.md`.** Auto-generated.
-20. **Improvising a placement and silently writing a precedent.** First-of-class requires user approval.
-21. **External path references** to `C:\code\…`, `C:\PARA\…`, `_staging\…` inside files written into `C:\dev`.
-22. **Force/recursive destructive operations** without explicit per-path approval.
-23. **Skipping auto-commit/push** after agent-made changes (unless user opted out).
-24. **Treating one area's `description` as a general rule** for other areas.
-25. **Saving non-software-development material** under `C:\dev`. Belongs in sibling systems.
+15. **Creating new `RULES.md` / `GOVERNANCE.md` / `POLICY.md`.** Forbidden.
+16. **Authoring SKILL.md / COMMAND.md outside `43.01-custom-skills\<name>\` / `43.02-commands\<name>\`.**
+17. **"Second source of truth" under `%USERPROFILE%\.cursor\skills-cursor\`.** Junctions/shortcuts only.
+18. **Hand-editing `00.01 README.md` or `00.04 JDex.md`.** Auto-generated.
+19. **Improvising a placement and silently writing a precedent.** First-of-class requires user approval.
+20. **External path references** to `C:\code\…`, `C:\staging\…`, `_staging\…` inside files written into `C:\dev`.
+21. **Force/recursive destructive operations** without explicit per-path approval.
+22. **Skipping auto-commit/push** after agent-made changes (unless user opted out).
+23. **Treating one area's `description` as a general rule** for other areas.
+24. **Saving non-software-development material** under `C:\dev`. Belongs in sibling systems.
 
 ---
 
-## 25. PARA boundary + hybrid considerations
-
-**Official JD stance:** do NOT combine PARA and JD — "fundamentally different structures" (forum 1005). PARA moves things between Projects / Areas / Resources / Archives based on current state. JD assigns static permanent IDs based on identity.
-
-**Bobby's stance (AGENTS-02-para.md):** `C:\dev` is canon (JDex-governed). `C:\PARA` is execution (PARA-method-governed). They are siblings, not parent/child. Cross-references in prose are fine; functional path references across the boundary are forbidden.
-
-**Hybrid mappings (Luca-Decimal, etc.) are forks, not JD.** Do not invent hybrid schemes inside `C:\dev`.
-
-**The triage question:** "Will another project, agent, or session need to depend on or find this?" Yes → `C:\dev`. Only relevant to this in-flight project → `C:\PARA`.
-
----
-
-## 26. Multi-home references
+## 25. Multi-home references
 
 When a file legitimately relates to multiple AC.IDs:
 
@@ -699,7 +684,7 @@ When a file legitimately relates to multiple AC.IDs:
 
 ---
 
-## 27. MOC (Map of Content) vs header IDs
+## 26. MOC (Map of Content) vs header IDs
 
 | Approach | When | Trade-offs |
 |---|---|---|
@@ -710,7 +695,7 @@ When a file legitimately relates to multiple AC.IDs:
 
 ---
 
-## 28. When to escalate (STOP and ask the user)
+## 27. When to escalate (STOP and ask the user)
 
 Always escalate — never improvise — when:
 - `jd_propose` returns no candidate with score ≥ 5.
@@ -722,12 +707,11 @@ Always escalate — never improvise — when:
 - A destructive operation is required (§Step 7).
 - Authority sources disagree (filesystem ≠ jdex.yaml ≠ schema). Report the disagreement.
 - Soft-warns W2 (AC.10 assigned) or W3 (file would land at area/category root) fire.
-- The artifact looks like it belongs in PARA, not dev — hand off to `para-ontology`.
 - The user mentions a sibling system identifier you don't have evidence for in `jdex.yaml`.
 
 ---
 
-## 29. Spec metadata
+## 28. Spec metadata
 
 | Field | Value |
 |---|---|
@@ -748,13 +732,12 @@ Spec citations used in Bobby's `jdex.yaml`:
 
 ---
 
-## 30. Reference
+## 29. Reference
 
 For full normative text:
 
 **Bobby C:\dev:**
 - `C:\dev\40-49-ai-agents-and-prompts\46-memory-and-bootstrap\46.02-working-memory\AGENTS-01-dev.md`
-- `C:\dev\40-49-ai-agents-and-prompts\46-memory-and-bootstrap\46.02-working-memory\AGENTS-02-para.md`
 - `C:\dev\40-49-ai-agents-and-prompts\43-rules-skills-subagents\43.05-governance-decisions\agent-rules-single-source-of-truth.md`
 
 **Universal JD spec (read-as-needed, not in full unless requested):**
