@@ -201,11 +201,13 @@ python -c "import pathlib,yaml; p=pathlib.Path(r'<ABS_OUTPUT_PATH>'); yaml.safe_
 
 ## Error protocol (enumerated deterministic halts)
 
+Stable presentation **order:** Emit table rows **sorted ascending lexicographically** by the **`Code`** column string.
+
 | Code | Predicate | Emitter action |
 |------|-----------|------------------|
+| **E-AMBIG** | Topic ambiguous after clarification | Single sentence HALT cite insufficient scope |
 | **E-CANON** | Template read fails | Preconditions row 1 path list only |
 | **E-PLACE** | Placement verifier missing + literal approval absent | Fence `UNSAVED_PLAYBOOK`; assert no disk commit |
-| **E-AMBIG** | Topic ambiguous after clarification | Single sentence HALT cite insufficient scope |
 | **E-PRECEDENT** | New slug folder sans `CREATE_TOPIC_SLUG` ACK | Quote AGENTS precedent gate; zero write |
 | **E-YAML** | Post-parse failure | Stderr verbatim; forbid SUCCESS narrative |
 
