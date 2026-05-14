@@ -44,7 +44,7 @@ The playbook is **not** prose. It is a **reusable procedure** another executor r
 
 - Emit **uncited** binding legal conclusions inside the YAML deliverable.
 - Emit **fabricated** `https://` **tier_1** rows that failed §Tier-1 URL integrity without conversion to **`manual_search:`**.
-- Execute filesystem **write** under `C:\dev` without prior **`jd_validate_path` → conformant** OR **`PLACEMENT_APPROVED_LITERAL_PATH=`** match (§Preconditions).
+- Execute filesystem **write** under `C:\dev` without satisfying **`§PLACEMENT`** (canonical: **§Preconditions** item **2** only).
 - Split or rename the §Required YAML skeleton across undocumented files (single deliverable file per invocation unless operator opens a tracked follow-up task).
 
 ---
@@ -58,10 +58,10 @@ Perform **once per invocation**, in strict order:
    - `40-49-ai-agents-and-prompts/43-rules-skills-subagents/43.02-commands/research/n8n/playbook/n8n_research_playbook.yaml`  
    On **I/O failure after exactly one duplicated read**: **HALT** (`halt_reason: CANON_REFERENCE_UNREADABLE`). Deliver only the verbatim error + missing path list. Emit **zero** playbook body.
 
-2. **Placement verifier available or substituted** — Before first filesystem write below `C:\dev\`, EITHER:
-   - Run **`jd_validate_path(output_path)`** (jd-mcp / equivalent already permitted in session) **once** against the fully assembled path **OR**
-   - Operator pastes verbatim tool output approving that exact path OR types `PLACEMENT_APPROVED_LITERAL_PATH=<exact path copied>` matching `output_path`.  
-   If **none** obtained: **HALT** (`halt_reason: PLACEMENT_UNVERIFIED`) and output playbook **inside chat fences only** prefixed `UNSAVED_PLAYBOOK`; **do not** claim disk persistence.
+2. **Placement verifier available or substituted (`§PLACEMENT`)** — **Normative copy lives only in this bullet;** all other sections **cite `§PLACEMENT`** (no paraphrase of tool names or outcomes). Before **first** filesystem write below `C:\dev\` **for this invocation’s current `output_path` string**, EITHER:
+   - Run **`jd_validate_path(output_path)`** (jd-mcp / equivalent already permitted in session) **at most once per distinct `output_path` string** (if the operator supplies a **different** path string mid-run **or** explicitly requests revalidation, treat that as **new** **`output_path`** **→** permit **one** fresh call **for that string only**) **OR**
+   - Operator pastes verbatim tool output approving that exact path **OR** types `PLACEMENT_APPROVED_LITERAL_PATH=<exact path copied>` matching `output_path`.  
+   If **none** obtained: **HALT** (`halt_reason: PLACEMENT_UNVERIFIED`; **Code `E-PLACE`**). Output playbook **inside chat fences only** prefixed `UNSAVED_PLAYBOOK`; **do not** claim disk persistence.
 
 ---
 
@@ -81,7 +81,7 @@ For every **`source_registry.tier_1_official`** descendant entry carrying a **`u
 1. Execute §Preconditions successfully (else HALT table §Error protocol rows **E-CANON** / **E-PLACE**).
 2. Confirm **TOPIC**, **primary facet slot** (`PRIMARY_PRODUCT` XOR `PRIMARY_SURFACE` XOR `PRIMARY_REGIME` XOR operator-supplied synonym recorded in `<PRIMARY_*>`), **SUBTOPIC** (empty string `""` allowed), **`YEAR_HINT`** (MUST equal operator session clock year from user_info when present; else ask for one **four-digit** year only), **`output_path`**, optional booleans **`NEGATIVE_EMBED_ALLOWED`**, **`NETWORK_FLAG_IN_YAML`**, **`SINGLE_LETTER_TOPIC_OK`** (default **false** when unstated).
 3. If topic scope still ambiguous → execute **exactly one** clarification block **≤ 5 bullets** (pattern from canon AI playbook `acknowledgment_protocol`); unresolved → row **E-AMBIG** only.
-4. Run **Passes A→D**, emit YAML, **`jd_validate_path` before write**, then §Post-write validation.
+4. Run **Passes A→D**, emit YAML, **then satisfy `§PLACEMENT` immediately before first disk write** (if already satisfied for the same `output_path`, **do not** call **`jd_validate_path`** again), then §Post-write validation.
 
 ---
 
@@ -185,6 +185,19 @@ Extra nested blocks inside `tier_3` / multi-channel mirrors follow **`n8n_resear
 
 ---
 
+## Deterministic string measures (normative)
+
+Use **one** executor-native definition consistently; **`python_here`** denotes Python **3.12+** semantics.
+
+| Name | Definition |
+|------|------------|
+| **`utf8_byte_len(s)`** | **`len(s.encode('utf-8'))`** where **`s`** is the **delimiter-free** concatenation / substring **after** **`.strip()`** on each **`TOPIC` / `SUBTOPIC` / primary facet** fragment that the **CMP row** includes (`python_here`). |
+| **`code_point_len(s)`** | **`len(s.strip())`** on a valid UTF-8–decoded Unicode string (`python_here`). **CMP rows** name the substring; **if** they name **`TOPIC`** or **`SUBTOPIC`**, **strip** **before** measure **unless** the row says otherwise. |
+
+**Mandatory:** All **`CMP` rows**, **`E-NULL`**, **`E-TINY`**, **`E-BYTE`**, **`E-META`**, evaluation **§L4-CMP CMP-8** paragraph, **`TOPIC ∥ SUBTOPIC`**, and **`code_point_len`** / **`utf8_byte_len`** use **§Deterministic string measures** — **never** grapheme-cluster counts **unless** added as a **new numbered CMP row**.
+
+---
+
 ## Hard rules
 
 - **YAML**: 2-space indent, UTF-8, ASCII tab forbidden in file body.
@@ -229,35 +242,44 @@ python -c "import pathlib,yaml; p=pathlib.Path(r'<ABS_OUTPUT_PATH>'); yaml.safe_
 
 Stable presentation **order:** Emit table rows **sorted ascending lexicographically** by the **`Code`** column string.
 
+**`halt_reason:` ↔ Code (biconditional equivalence for operator logs):**
+
+| `halt_reason` | Code |
+|---|---|
+| **`CANON_REFERENCE_UNREADABLE`** | **E-CANON** |
+| **`PLACEMENT_UNVERIFIED`** | **E-PLACE** |
+| **`PRECEDENT_GATE`** | **E-PRECEDENT** |
+| **`YAML_PARSE_FAIL`** | **E-YAML** |
+
 ### L4-CMP edge ↔ halt mapping (closed 8-tuple)
 
-**Evaluation order (deterministic):** Test **CMP-1 → CMP-7** **preflight** in **numeric order**; **first** true row **latches** its mapped **Code** and **skips** remaining **CMP-1–7** tests. Separately (**post-compose**, immediately before disk write intent), evaluate **CMP-8** once **only when** **`UTF-8` byte length(`TOPIC` ∥ `SUBTOPIC`) == 8192**; **`CMP-8` predicate true** iff that length test passes **and** (`prompt_metadata.boundary_saturated` **absent** OR **not** YAML boolean **`true`**).  
+**Evaluation order (deterministic):** Test **CMP-1 → CMP-7** **preflight** in **numeric order**; **first** true row **latches** its mapped **Code** and **skips** remaining **CMP-1–7** tests. Separately (**post-compose**, immediately before disk write intent), evaluate **CMP-8** once **only when** **`utf8_byte_len(TOPIC ∥ SUBTOPIC) == 8192`** (see **§Deterministic string measures**); **`CMP-8` predicate true** iff that length equality holds **and** (`prompt_metadata.boundary_saturated` **absent** OR **not** YAML boolean **`true`**).  
 **Independent channel:** §Tier-1 URL integrity transport faults invoke **`E-NET`** when the HTTP client surfaces **socket / DNS / TLS handshake** failure **before** a terminal status code — orthogonal to CMP latches except both may surface text in same operator turn **lex-sorted by Code**.
 
 | CMP | Stress |
 |:-:|---|
 | **1** empty / null-like | **`TOPIC` AND `SUBTOPIC` BOTH** zero-length **after ASCII trim AND collapse of internal ASCII whitespace runs** → **cannot** distill scope (**else** skip row). |
-| **2** malformed / corrupt payload | **`output_path`** contains **Windows-reserved** characters `< > : " \| ? *` **or** `pathlib.Path(output_path)` construction / `resolve()` on the session host raises **ValueError** / **OSError** indicating invalid path syntax. |
+| **2** malformed / corrupt payload | **Path character grammar (string-only; no `resolve()`, no disk touch):** let **`p_norm = output_path.strip().replace('/', '\\')`**. Predicate **true** if **any**: (i) **`p_norm`** empty; (ii) **`U+0000` ∈ `output_path`**; (iii) **any forbidden filename character** ∈ **`output_path`**, forbidden set **`{ U+003C, U+003E, U+0022, U+007C, U+003F, U+002A }`** (ASCII **less-than, greater-than, quotation mark, vertical bar, question mark, asterisk**); (iv) **`local-drive colon discipline`:** iff **`not p_norm.startswith('\\\\')`** **and** **`p_norm`** matches **`(?i)^[a-z]:[\\/]`** (drive letter + colon + path separator), then **`output_path`** **must contain exactly one** **`U+003A` (colon)** — otherwise predicate **true** (reject **`C:stream`**, multi-colon quirks). Paths starting **`\\\\`** (**UNC**, **`\\?\`**, etc.) **skip clause (iv)**. **JDex / `C:\dev` conformance** is **solely `§PLACEMENT` / `jd_validate_path`** — **CMP‑2 does not replicate it.** |
 | **3** boundary | **`YEAR_HINT` parses to integer ∉ closed range `1900..2099`**. |
 | **4** wrong-type | `user_info` **omits** clock year **and** operator-supplied `YEAR_HINT` is **not** **exactly** `/^[0-9]{4}$/` ASCII. |
-| **5** maximum-size | **UTF-8 byte length** of **`TOPIC` ∥ `SUBTOPIC` ∥ each non-empty primary facet string** (UTF-8 concatenation **without** delimiters) **>** **8192**. |
-| **6** minimal-size | **`len(TOPIC.strip()) == 1`** **and** `SUBTOPIC` empty **and** Pass A **would** emit **zero** in-scope regime nouns **but** operator has **not** confirmed intent `SINGLE_LETTER_TOPIC_OK=true`. |
+| **5** maximum-size | Let **`s5 = TOPIC.strip() ∥ SUBTOPIC.strip() ∥ v₁ ∥ v₂ ∥ v₃`** where **`v₁,v₂,v₃`** are **`PRIMARY_PRODUCT.strip()`**, **`PRIMARY_SURFACE.strip()`**, **`PRIMARY_REGIME.strip()`** in **that order**, each **omitted if empty** after strip. **`utf8_byte_len(s5) > 8192`**. |
+| **6** minimal-size | **`code_point_len(TOPIC)==1`** **and** **`SUBTOPIC.strip()` empty** **and** Pass A **would** emit **zero** in-scope regime nouns **but** operator has **not** confirmed intent `SINGLE_LETTER_TOPIC_OK=true`. |
 | **7** missing required fields | **>1** of (`PRIMARY_PRODUCT`,`PRIMARY_SURFACE`,`PRIMARY_REGIME`) carrying **non-empty** symbolic bindings after trim (facet XOR violation). |
-| **8** exact boundary coincidence | **Post-compose only:** `len_utf8(`**`TOPIC` ∥ `SUBTOPIC`**`) == 8192` **and** (`prompt_metadata.boundary_saturated` **absent** OR **not** YAML boolean **`true`**) → latch **`E-META`**. |
+| **8** exact boundary coincidence | **Post-compose only:** **`utf8_byte_len(TOPIC ∥ SUBTOPIC) == 8192`** **and** (`prompt_metadata.boundary_saturated` **absent** OR **not** YAML boolean **`true`**) → latch **`E-META`**. |
 
 | Code | Predicate | Emitter action |
 |------|-----------|------------------|
 | **E-AMBIG** | Topic ambiguous after clarification | Single sentence HALT cite insufficient scope |
 | **E-BOUND** | Rows **CMP-3** or **CMP-4** latch | Deliver **exactly one** corrective prompt repeating failing predicate + permissible closed response shape |
-| **E-BYTE** | Row **CMP-5** latch | Demand operator chunk topic into ≤8192-byte segments with stable merge plan ID |
+| **E-BYTE** | Row **CMP-5** latch | Demand operator partition strings so reconstructed **`utf8_byte_len(s5)`** (CMP‑5 formulation) **`≤ 8192`** across the merge plan (stable merge ID in chat header) |
 | **E-CANON** | Template read fails | Preconditions row 1 path list only |
 | **E-MALPATH** | Row **CMP-2** latch | HALT verbatim illegal path excerpt + forbids disk write |
 | **E-META** | **CMP-8** latch | Insert `prompt_metadata.boundary_saturated: true` + re-run §Post-write validation (**no** `REWRITE_ACK` if zero prior successful bytes) |
 | **E-NET** | Transport failure during §Tier-1 URL integrity | Freeze new `url:` locks; downgrade **all** pending unproven URLs this pass to **`manual_search:`** stubs per §Tier-1 URL integrity; **do not HALT** if ≥1 playbook section still producible (**degraded fidelity flag** boolean `NETWORK_DEGRADED=true` in operator chat header only, **not** inside YAML unless operator sets `NETWORK_FLAG_IN_YAML=true`) |
-| **E-NULL** | Row **CMP-1** latch | Prompt once for non-empty **`TOPIC` OR materially distinct `SUBTOPIC`** minimal 8 graphemes |
+| **E-NULL** | Row **CMP-1** latch | Prompt once for replacement string **`s`** (**prefer** non-empty **`TOPIC`**; else materially distinct **`SUBTOPIC`**) such that **`code_point_len(s) ≥ 8`** |
 | **E-PLACE** | Placement verifier missing + literal approval absent | Fence `UNSAVED_PLAYBOOK`; assert no disk commit |
 | **E-PRECEDENT** | New slug folder sans `CREATE_TOPIC_SLUG` ACK | Quote AGENTS precedent gate; zero write |
-| **E-TINY** | Row **CMP-6** latch | One prompt: supply `SINGLE_LETTER_TOPIC_OK=true` **or** expand **TOPIC** / **SUBTOPIC** to ≥2 graphemes **or** enumerate Pass A regime noun |
+| **E-TINY** | Row **CMP-6** latch | One prompt: supply `SINGLE_LETTER_TOPIC_OK=true` **or** expand **TOPIC** / **SUBTOPIC** to **`code_point_len ≥ 2`** **or** enumerate Pass A regime noun |
 | **E-XOR** | Row **CMP-7** latch | Listing conflicting primaries verbatim; forbid emission until XOR repaired |
 | **E-YAML** | Post-parse failure | Stderr verbatim; forbid SUCCESS narrative |
 
