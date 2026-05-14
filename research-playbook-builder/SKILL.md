@@ -31,7 +31,7 @@ Perform **once per invocation**, in strict order:
 1. **Canon templates readable** — Read BOTH paths relative to workspace root `C:\dev\` using the identical relative leaf trail expressed with **`/` segment separators** (tools accept the same logical path spelled with `\` on Windows shells):
    - `40-49-ai-agents-and-prompts/43-rules-skills-subagents/43.02-commands/research/ai/playbook/ai_research_playbook.yaml`
    - `40-49-ai-agents-and-prompts/43-rules-skills-subagents/43.02-commands/research/n8n/playbook/n8n_research_playbook.yaml`  
-   On **I/O failure after one retry**: **HALT** (`halt_reason: CANON_REFERENCE_UNREADABLE`). Deliver only the verbatim error + missing path list. Emit **zero** playbook body.
+   On **I/O failure after exactly one duplicated read**: **HALT** (`halt_reason: CANON_REFERENCE_UNREADABLE`). Deliver only the verbatim error + missing path list. Emit **zero** playbook body.
 
 2. **Placement verifier available or substituted** — Before first filesystem write below `C:\dev\`, EITHER:
    - Run **`jd_validate_path(output_path)`** (jd-mcp / equivalent already permitted in session) **once** against the fully assembled path **OR**
@@ -45,7 +45,7 @@ Perform **once per invocation**, in strict order:
 For every **`source_registry.tier_1_official`** descendant entry carrying a **`url:`** field valued as `http://` or `https://`:
 
 1. Probe reachability using **HEAD**; **if HEAD unsupported by HTTP client**, use **GET**. Follow **one** redirect hop; no auth headers.
-2. **If** terminal status ∉ **2xx** after **one** retry → **strip** `url`; replace with **`manual_search:`** string `site:<hostname-from-failed-url> <TOPIC> <YEAR_HINT>` (hostname = registrable host extracted mechanically from the failed URL; no manual invention).
+2. **If** terminal status ∉ **2xx** after **one** repeated probe → **strip** `url`; replace with **`manual_search:`** string `site:<hostname-from-failed-url> <TOPIC> <YEAR_HINT>` (hostname = registrable host extracted mechanically from the failed URL; no manual invention).
 
 **Never** fabricate undocumented `url:` literals.
 
