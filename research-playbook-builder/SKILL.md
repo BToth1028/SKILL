@@ -24,6 +24,31 @@ The playbook is **not** prose. It is a **reusable procedure** another executor r
 
 ---
 
+## Scope contract (routing + drift guard)
+
+### In scope
+
+- Produce one `kind: reusable_research_procedure` YAML file matching the §Required YAML skeleton and canon **AI / n8n** playbook morphology.
+- Bind **tier_1_official**, **tier_2_curated_repos**, **tier_3_community_zeitgeist**, **`search_templates`**, **`decision_procedure`**, **`validation_gates`**, **`output_contract`** to operator **TOPIC** + facet enums.
+- Run §Tier-1 URL integrity probes before locking `url:` literals (or degrade to **`manual_search:`** per rule).
+
+### Out of scope (route, do not playbook)
+
+| Request class | Mandatory surface |
+|---|---|
+| Binding legal adjudication beyond citing published instruments | **`NOT_IN_SCOPE_ROUTE_LEGAL_COUNSEL`** chat-only refusal |
+| Certified accounting / audited financial assertions | **`NOT_IN_SCOPE_ROUTE_QUALIFIED_ACCOUNTANT`** chat-only refusal |
+| Trade-secret / non-public tariff mapping without operator-supplied rows | **`OPERATOR_SPECIFIC_DATA_REQUIRED`** chat-only refusal |
+
+### Never
+
+- Emit **uncited** binding legal conclusions inside the YAML deliverable.
+- Emit **fabricated** `https://` **tier_1** rows that failed §Tier-1 URL integrity without conversion to **`manual_search:`**.
+- Execute filesystem **write** under `C:\dev` without prior **`jd_validate_path` → conformant** OR **`PLACEMENT_APPROVED_LITERAL_PATH=`** match (§Preconditions).
+- Split or rename the §Required YAML skeleton across undocumented files (single deliverable file per invocation unless operator opens a tracked follow-up task).
+
+---
+
 ## Preconditions (fail-closed before authoring)
 
 Perform **once per invocation**, in strict order:
@@ -54,7 +79,7 @@ For every **`source_registry.tier_1_official`** descendant entry carrying a **`u
 ## When invoked
 
 1. Execute §Preconditions successfully (else HALT table §Error protocol rows **E-CANON** / **E-PLACE**).
-2. Confirm **TOPIC**, **primary facet slot** (`PRIMARY_PRODUCT` XOR `PRIMARY_SURFACE` XOR `PRIMARY_REGIME` XOR operator-supplied synonym recorded in `<PRIMARY_*>`), **SUBTOPIC** (empty string `""` allowed), **`YEAR_HINT`** (MUST equal operator session clock year from user_info when present; else ask for one **four-digit** year only), **`output_path`**.
+2. Confirm **TOPIC**, **primary facet slot** (`PRIMARY_PRODUCT` XOR `PRIMARY_SURFACE` XOR `PRIMARY_REGIME` XOR operator-supplied synonym recorded in `<PRIMARY_*>`), **SUBTOPIC** (empty string `""` allowed), **`YEAR_HINT`** (MUST equal operator session clock year from user_info when present; else ask for one **four-digit** year only), **`output_path`**, optional booleans **`NEGATIVE_EMBED_ALLOWED`**, **`NETWORK_FLAG_IN_YAML`**, **`SINGLE_LETTER_TOPIC_OK`** (default **false** when unstated).
 3. If topic scope still ambiguous → execute **exactly one** clarification block **≤ 5 bullets** (pattern from canon AI playbook `acknowledgment_protocol`); unresolved → row **E-AMBIG** only.
 4. Run **Passes A→D**, emit YAML, **`jd_validate_path` before write**, then §Post-write validation.
 
@@ -97,6 +122,7 @@ Duplicate extra `search_templates` channel maps (`npm`, `reddit`, …) cloned fr
 prompt_metadata:
   id: <topic-kebab>-research-playbook-v1
   version: "1.0.0"
+  # boundary_saturated: true   # required only when §L4-CMP row CMP-8 predicate is true; omit key when false
   kind: reusable_research_procedure
   intended_use: >-
   modeled_on: "../../ai/playbook/ai_research_playbook.yaml"
@@ -203,15 +229,45 @@ python -c "import pathlib,yaml; p=pathlib.Path(r'<ABS_OUTPUT_PATH>'); yaml.safe_
 
 Stable presentation **order:** Emit table rows **sorted ascending lexicographically** by the **`Code`** column string.
 
+### L4-CMP edge ↔ halt mapping (closed 8-tuple)
+
+**Evaluation order (deterministic):** Test **CMP-1 → CMP-7** **preflight** in **numeric order**; **first** true row **latches** its mapped **Code** and **skips** remaining **CMP-1–7** tests. Separately (**post-compose**, immediately before disk write intent), evaluate **CMP-8** once **only when** **`UTF-8` byte length(`TOPIC` ∥ `SUBTOPIC`) == 8192**; **`CMP-8` predicate true** iff that length test passes **and** (`prompt_metadata.boundary_saturated` **absent** OR **not** YAML boolean **`true`**).  
+**Independent channel:** §Tier-1 URL integrity transport faults invoke **`E-NET`** when the HTTP client surfaces **socket / DNS / TLS handshake** failure **before** a terminal status code — orthogonal to CMP latches except both may surface text in same operator turn **lex-sorted by Code**.
+
+| CMP | Stress |
+|:-:|---|
+| **1** empty / null-like | **`TOPIC` AND `SUBTOPIC` BOTH** zero-length **after ASCII trim AND collapse of internal ASCII whitespace runs** → **cannot** distill scope (**else** skip row). |
+| **2** malformed / corrupt payload | **`output_path`** contains **Windows-reserved** characters `< > : " \| ? *` **or** `pathlib.Path(output_path)` construction / `resolve()` on the session host raises **ValueError** / **OSError** indicating invalid path syntax. |
+| **3** boundary | **`YEAR_HINT` parses to integer ∉ closed range `1900..2099`**. |
+| **4** wrong-type | `user_info` **omits** clock year **and** operator-supplied `YEAR_HINT` is **not** **exactly** `/^[0-9]{4}$/` ASCII. |
+| **5** maximum-size | **UTF-8 byte length** of **`TOPIC` ∥ `SUBTOPIC` ∥ each non-empty primary facet string** (UTF-8 concatenation **without** delimiters) **>** **8192**. |
+| **6** minimal-size | **`len(TOPIC.strip()) == 1`** **and** `SUBTOPIC` empty **and** Pass A **would** emit **zero** in-scope regime nouns **but** operator has **not** confirmed intent `SINGLE_LETTER_TOPIC_OK=true`. |
+| **7** missing required fields | **>1** of (`PRIMARY_PRODUCT`,`PRIMARY_SURFACE`,`PRIMARY_REGIME`) carrying **non-empty** symbolic bindings after trim (facet XOR violation). |
+| **8** exact boundary coincidence | **Post-compose only:** `len_utf8(`**`TOPIC` ∥ `SUBTOPIC`**`) == 8192` **and** (`prompt_metadata.boundary_saturated` **absent** OR **not** YAML boolean **`true`**) → latch **`E-META`**. |
+
 | Code | Predicate | Emitter action |
 |------|-----------|------------------|
 | **E-AMBIG** | Topic ambiguous after clarification | Single sentence HALT cite insufficient scope |
+| **E-BOUND** | Rows **CMP-3** or **CMP-4** latch | Deliver **exactly one** corrective prompt repeating failing predicate + permissible closed response shape |
+| **E-BYTE** | Row **CMP-5** latch | Demand operator chunk topic into ≤8192-byte segments with stable merge plan ID |
 | **E-CANON** | Template read fails | Preconditions row 1 path list only |
+| **E-MALPATH** | Row **CMP-2** latch | HALT verbatim illegal path excerpt + forbids disk write |
+| **E-META** | **CMP-8** latch | Insert `prompt_metadata.boundary_saturated: true` + re-run §Post-write validation (**no** `REWRITE_ACK` if zero prior successful bytes) |
+| **E-NET** | Transport failure during §Tier-1 URL integrity | Freeze new `url:` locks; downgrade **all** pending unproven URLs this pass to **`manual_search:`** stubs per §Tier-1 URL integrity; **do not HALT** if ≥1 playbook section still producible (**degraded fidelity flag** boolean `NETWORK_DEGRADED=true` in operator chat header only, **not** inside YAML unless operator sets `NETWORK_FLAG_IN_YAML=true`) |
+| **E-NULL** | Row **CMP-1** latch | Prompt once for non-empty **`TOPIC` OR materially distinct `SUBTOPIC`** minimal 8 graphemes |
 | **E-PLACE** | Placement verifier missing + literal approval absent | Fence `UNSAVED_PLAYBOOK`; assert no disk commit |
 | **E-PRECEDENT** | New slug folder sans `CREATE_TOPIC_SLUG` ACK | Quote AGENTS precedent gate; zero write |
+| **E-TINY** | Row **CMP-6** latch | One prompt: supply `SINGLE_LETTER_TOPIC_OK=true` **or** expand **TOPIC** / **SUBTOPIC** to ≥2 graphemes **or** enumerate Pass A regime noun |
+| **E-XOR** | Row **CMP-7** latch | Listing conflicting primaries verbatim; forbid emission until XOR repaired |
 | **E-YAML** | Post-parse failure | Stderr verbatim; forbid SUCCESS narrative |
 
-Abort entire run upon first triggering row (**no partially written corrupt file retries without operator fresh approval**).
+Abort / **HALT** (no playbook file bytes **except** `UNSAVED_PLAYBOOK` fence where listed) on first truth of: **E-AMBIG**, **E-BYTE**, **E-CANON**, **E-MALPATH**, **E-PLACE**, **E-PRECEDENT**, **E-YAML**.
+
+**Recoverable (one corrective cycle then re-enter §When invoked step 2 sans partial disk artifact):** **E-NULL**, **E-BOUND**, **E-TINY**, **E-XOR**, **E-META**.
+
+**Degrade without abort:** **E-NET** — complete YAML with `manual_search:` substitutions per rule.
+
+**No destructive on-disk rewrite retries** without **`REWRITE_ACK=<path>`** operator line.
 
 ---
 
@@ -227,4 +283,4 @@ Produce **finding-style refusal** (**not disguised playbook content**) redirecti
 
 Forbidden: invent factual account numbers absent CFR anchor rows.
 
-Keep refusals **outside** playbook YAML emitted as deliverable (**chat-only**) **unless** `examples.negative[]` illustrative stub demands encoded refusal pattern verbatim.
+**Refusal transport rule:** Structured refusals from §Scope contract **Out of scope** routes **never** occupy `identity`, `mission`, or **`source_registry`** except as **opaque quoted string blobs** inside `examples.negative[]` **only when** operator predeclares `NEGATIVE_EMBED_ALLOWED=true` in chat **before** write. Default → refusals stay **chat-only**; YAML bytes contain **no** refusal tokens.
