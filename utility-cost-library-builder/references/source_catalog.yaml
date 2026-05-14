@@ -1,0 +1,289 @@
+schema_version: 4.0.0
+last_reviewed: 2026-05-14
+authority: "skill canonical — source-tier definitions, prioritization rules, citation contract"
+
+# ============================================================
+# AUTHORITY TIERS (T1 highest, T5 lowest)
+# ============================================================
+
+T1:
+  confidence_ceiling: HIGH
+  description: "Governing federal regulations, ISO/RTO tariffs, state PUC orders, codified industry standards, state DOT specifications"
+  members:
+    federal_regulations:
+      - "18 CFR Part 101 — FERC Uniform System of Accounts for Electric Public Utilities (Federal Power Act)"
+      - "18 CFR Part 201 — FERC Uniform System of Accounts for Natural Gas Companies (Natural Gas Act) — NEW v4 per ADR-16"
+      - "18 CFR §367.3030 — Service Company USoA Account 303 (parallel intangible plant text)"
+      - "7 CFR §1767.16 — RUS Electric Plant Instructions (mirrors FERC Part 101)"
+      - "23 CFR Part 645 Subpart A — Utility Relocations on federal-aid highways"
+      - "47 CFR Parts 1, 17, 22, 24, 25, 27, 73, 90, 96, 101 — FCC siting/spectrum (when telecom on shared corridor)"
+      - "Federal Register 2023-14994 — Order No. 898 final rule (RM21-11), effective 2025-01-01; new accounts 351, 363, 158 series, 391/397 sub-accounts — NEW v4"
+    ferc_official:
+      - "FERC eLibrary (docket filings, orders, formula rate cases)"
+      - "FERC Form 1 — Annual Report of Major Electric Utilities"
+      - "FERC Form 2 — Annual Report of Major Natural Gas Companies — NEW v4"
+      - "FERC Form 2-A — Annual Report of Nonmajor Natural Gas Companies — NEW v4"
+      - "FERC Form 3-Q — Quarterly Financial Report (electric + gas) — NEW v4"
+      - "FERC Form 6 — Annual Report of Oil Pipeline Companies (reference only)"
+      - "FERC Form 60 — Centralized Service Company Annual Report"
+      - "FERC Form 714 — Annual Electric Balancing Authority Area Report"
+      - "FERC Order No. 898 (RM21-11) — Accounting and Reporting Treatment of Certain Renewable Energy Assets, effective 2025-01-01 — NEW v4"
+      - "FERC Order 1000 (transmission planning)"
+      - "FERC Order 2003 (Standard Generator Interconnection)"
+      - "FERC Office of Enforcement — AI01-1-000 docket (accounting matters guidance)"
+      - "FERC §216 federal siting authority"
+    iso_rto_tariffs_and_planning:
+      - "PJM Open Access Transmission Tariff (OATT)"
+      - "PJM Manual 14B — Regional Transmission Planning Process"
+      - "PJM Manual 14C — Generation & Transmission Interconnection Facilities Construction"
+      - "PJM Manual 14G — Generation Interconnection Requests"
+      - "PJM Manual 14H — New Service Requests Cycle Process"
+      - "ISO-NE Tariff / Transmission Operating Agreement"
+      - "ISO-NE Planning Procedure 4 (cost-estimating guidelines)"
+      - "ISO-NE PP-4 Attachment D — Cost Estimating Guidelines (10-category template)"
+      - "NYISO Open Access Transmission Tariff (OATT)"
+      - "NYISO OATT §30.8 — Class Year Interconnection Facilities Study"
+      - "NYISO OATT §25.5 — Cost Responsibility (ERIS/CRIS)"
+      - "NYISO Manual 23 — Transmission Expansion & Interconnection"
+      - "MISO Transmission Cost Estimation Guide for MTEP25"
+      - "MISO MTEP24 / MTEP25 cost-estimation guides"
+      - "SPP / CAISO / ERCOT tariffs (reference only — not Northeast)"
+    state_puc_filings:
+      - "PA PUC §1102/§1501 (siting) + §1511 (eminent domain) — transmission lines"
+      - "Title 66 PA Cons. Stat. — Pennsylvania Public Utility Code — NEW v4"
+      - "NY DPS — Article VII Major Electric/Gas Transmission Facilities"
+      - "NY PSC Case 14-M-0450 — 2015-11-24 USoA Memorandum and Resolution, effective 2016-01-01 — NEW v4"
+      - "16 NYCRR Chapter VI — NY PSC Uniform System of Accounts — NEW v4"
+      - "16 NYCRR Part 167 — NY electric revenue accounts incl. 167.5/167.6 ESCO separation — NEW v4"
+      - "16 NYCRR Part 312 — NY gas revenue accounts incl. 312.5/312.6 ESCO separation — NEW v4"
+      - "NY PSC REV (Reforming the Energy Vision) proceedings — NEW v4"
+      - "NY PSC RDM (Revenue Decoupling Mechanism) tariff filings — NEW v4"
+      - "NY PSC EAM (Earnings Adjustment Mechanism) orders — NEW v4"
+      - "NY PSC PGA / GSC (Purchased Gas Adjustment / Gas Supply Charge) clauses — NEW v4"
+      - "NJ BPU petitions / Board Orders"
+      - "CT Public Utilities Regulatory Authority (PURA)"
+      - "MA Department of Public Utilities (DPU) + EFSB filings"
+      - "RI Public Utilities Commission + RI EFSB"
+      - "VT Public Utility Commission §248 filings"
+      - "NH Public Utilities Commission + Site Evaluation Committee §162-H"
+      - "ME Public Utilities Commission §3132 CPCN filings"
+      - "MD Public Service Commission CPCN dockets"
+      - "DE Public Service Commission siting / CPCN"
+      - "State Integrated Resource Plans (IRPs)"
+      - "State Distribution System Plans / Grid Modernization filings"
+    codified_standards:
+      - "RUS Bulletins (USDA Rural Utilities Service — 1724E series)"
+      - "RUS Bulletin 1724E-200 — Design Manual for HV Transmission Lines"
+      - "NESC (IEEE C2 — National Electrical Safety Code)"
+      - "IEEE 1547 — Interconnection of Distributed Resources"
+      - "IEEE 738 — Overhead Conductor Temperature/Ampacity"
+      - "IEEE 605 — Substation Rigid Bus Design"
+      - "IEEE C37.30 — High-Voltage Air Switches (terminology lock)"
+      - "IEEE C57.13 — Instrument Transformers (terminology lock)"
+      - "IEEE C57.12 — Power Transformers"
+      - "IEEE 516 — Live-Line Work"
+      - "ANSI"
+      - "ASCE 74 — Transmission Line Structural Loadings"
+      - "ASCE 113 — Substation Structures"
+      - "USACE Section 404 / Section 10 / Section 408 reference guides"
+      - "FAA Form 7460-1 Obstruction Evaluation procedures"
+    state_dot_specifications:
+      - "PennDOT Publication 408 — Specifications"
+      - "PennDOT Publication 16M — Utility Manual"
+      - "NYSDOT Standard Specifications"
+      - "NYSDOT Highway Design Manual Chapter 13 — Utilities + Appendices 13C/13E"
+      - "NJDOT Standard Specifications + Highway Occupancy Permits"
+      - "ConnDOT Standard Specifications"
+      - "MassDOT Standard Specifications"
+      - "RIDOT Standard Specifications"
+      - "VTrans Standard Specifications"
+      - "NHDOT Standard Specifications"
+      - "MaineDOT Standard Specifications"
+      - "DelDOT Standard Specifications"
+      - "MDDOT Standard Specifications"
+      - "FHWA Utility Relocation Program Guide"
+      - "USACE UFGS (Unified Facilities Guide Specifications)"
+      - "FEMA Public Assistance cost codes"
+    railroad_utility_specifications:
+      - "AAR Wire/Conduit Utility Crossing Reference"
+      - "Amtrak Utility Installations procedures"
+      - "CSX Utility Permits procedures"
+      - "Norfolk Southern Wireline Occupancy Specs (NSCE-4)"
+      - "NJ Transit / Metro-North / LIRR / MBTA RR-crossing requirements"
+    state_environmental:
+      - "NY DEC Article 24 (freshwater wetlands), Article 15 (stream protection)"
+      - "PA DEP Chapter 102 (E&S / NPDES PCSM), Chapter 105 (dam/encroachment)"
+      - "NJ DEP Land Resource Protection (Wetlands IP, Flood Hazard Area, CAFRA, Waterfront)"
+      - "CT DEEP wetlands, 401 WQC"
+      - "MassDEP Wetlands Protection Act / 401 WQC / Ch.91"
+      - "RI DEM Freshwater Wetlands / CRMC coastal"
+      - "VT ANR wetlands / stream alteration"
+      - "NH DES wetlands / AoT (alteration of terrain)"
+      - "ME DEP NRPA / Site Location of Development Act"
+      - "MDE wetlands / sediment control"
+      - "DNREC subaqueous lands / wetlands / S&S"
+      - "Delaware River Basin Commission (DRBC) / Susquehanna River Basin Commission (SRBC)"
+    public_utility_bid_data:
+      - "Northeast utility public bid packages and unit-price schedules"
+      - "Municipal utility schedules"
+      - "Public power authority bid tabulations"
+
+T2:
+  confidence_ceiling: HIGH
+  description: "Authoritative industry standards, research orgs, labor/wage authorities"
+  members:
+    labor_wage:
+      - "NECA Manual of Labor Units (MLU)"
+      - "IBEW / NECA Collective Bargaining Agreements (Northeast Locals: 102, 126, 269, 351, 358, 654, 1249)"
+      - "Davis-Bacon Act wage determinations (sam.gov / WDOL)"
+      - "BLS OES (NAICS 22 Utilities, 237 Heavy Civil, 238 Specialty Trade)"
+      - "BLS Employment Cost Index (ECI)"
+      - "State prevailing-wage filings (PA Act 442, NY Section 220)"
+    research_and_estimating_standards:
+      - "EPRI (Electric Power Research Institute) publications"
+      - "EPRI Guide for Successful Transmission Line Siting"
+      - "EPRI T&D Environmental Solutions"
+      - "AACE International RP 96R-18 — Cost Estimate Classification for Power Transmission Lines (the relevant transmission line standard)"
+      - "AACE RP 17R-97 — Cost Estimate Classification, General"
+      - "AACE RP 18R-97 — Cost Estimate Classification, Process Industries"
+      - "AACE RP 56R-08 — Cost Estimate Classification (older general electric standard)"
+      - "AACE RP 99R-21 — Forensic Project Estimating"
+      - "EEI (Edison Electric Institute) publications"
+      - "NRECA (National Rural Electric Cooperative Association)"
+      - "APPA (American Public Power Association)"
+    federal_data_agencies:
+      - "FHWA (Federal Highway Administration)"
+      - "USACE (US Army Corps of Engineers)"
+      - "FEMA"
+      - "USDA NRCS"
+    capitalization_guidelines_public:
+      - "Versant Power Capitalization Guidelines (Maine, 12/15/2022) — 18 capitalizable Components of Construction Costs"
+
+T3:
+  confidence_ceiling: MEDIUM
+  description: "Indexed and platform-derived"
+  members:
+    indices:
+      - "ENR Construction Cost Index (CCI)"
+      - "ENR Building Cost Index (BCI)"
+      - "BLS Consumer Price Index (CPI)"
+      - "BLS Producer Price Index (PPI)"
+      - "LME (London Metal Exchange)"
+      - "COMEX"
+      - "SteelBenchmarker / Platts"
+      - "Handy & Harman precious-metals indices"
+    estimating_platforms:
+      - "RSMeans (Gordian) — Heavy Construction / Division 33 Utilities"
+      - "HeavyBid (HCSS)"
+      - "Accubid"
+      - "Spectrum"
+      - "InEight"
+      - "B2W"
+      - "Sage Estimating"
+      - "Primavera P6 / Oracle Unifier"
+      - "Bluebeam"
+      - "OST"
+      - "Bentley OpenRoads / OpenUtilities"
+      - "ESRI ArcGIS"
+      - "PLS-CADD (overhead line analysis)"
+    utility_software:
+      - "SAP PM / PS"
+      - "Oracle Utilities (WAM, NMS)"
+      - "IBM Maximo"
+      - "Procore"
+      - "Kahua"
+      - "Buildertrend"
+      - "Autodesk Construction Cloud / Autodesk Cost Management"
+      - "Microsoft Project"
+
+T4:
+  confidence_ceiling: MEDIUM
+  description: "Contractor public materials, vendor spec language (scope only — never pricing)"
+  members:
+    northeast_t_and_d_contractors:
+      - "Quanta Services"
+      - "MasTec"
+      - "MYR Group"
+      - "Pike Engineering / Pike Electric"
+      - "Henkels & McCoy"
+      - "Asplundh"
+      - "Davey Tree"
+      - "Aldridge Electric"
+      - "Power Construction Services"
+      - "PAR Electrical Contractors"
+      - "InfraSource"
+      - "Michels"
+    vendor_spec_language:
+      - "Hubbell (scope language only)"
+      - "S&C Electric (scope only)"
+      - "ABB (scope only)"
+      - "Eaton (scope only)"
+      - "GE Vernova (scope only)"
+  notes: "Vendor pages are scope-language only; never embed vendor pricing."
+
+T5:
+  confidence_ceiling: LOW
+  description: "Discovery and corroboration only — never sole basis for HIGH/MEDIUM"
+  members:
+    forums:
+      - "Reddit (r/lineman, r/utility, r/electricians, r/Construction)"
+      - "Mike Holt Forums"
+      - "Contractor Talk"
+      - "LinkedIn discussions"
+      - "ENR Construction"
+      - "YouTube tutorials on utility cost estimating / transmission line cost estimating"
+    public_code_data:
+      - "GitHub utility cost-model / WBS repos:"
+      - "  NREL/reV (github.com/NREL/reV) — transmission cost calculator"
+      - "  NREL/reVX (reView / reVRt) — point-of-interconnection cost"
+      - "  NREL/ReEDS-2.0 — transmission capex decomposition (Discussion #111)"
+      - "  catalyst-cooperative/PUDL — FERC Form 1 ingestion at account level"
+      - "  PyPSA / PyPSA-Eur — capital-cost parameterization"
+      - "  manuvarkey/GEstimator — civil estimating tool"
+      - "  OverheadTransmissionLineSoftware/Models"
+      - "  LLNL/GridDyn"
+      - "data.gov, state open-data portals"
+    other:
+      - "ToS-compliant scraped pages"
+      - "Practitioner blog posts (Procore, Billd, Simpro, RIB Software, Buildern, Boom & Bucket, LegalClarity)"
+
+# ============================================================
+# PRIORITIZATION RULES
+# ============================================================
+prioritization:
+  - "Higher tier wins on overlap (T1 > T2 > T3 > T4 > T5)."
+  - "Conflicts → emit BOTH rows + decision_trace recording the discrepancy."
+  - "T5 alone NEVER reaches HIGH/MEDIUM confidence."
+  - "Geography-specific T1 beats national T2 for that geography."
+  - "License: PUBLIC > PUBLIC_WITH_ATTRIBUTION > RESTRICTED; RESTRICTED never embedded."
+  - "FERC USoA (18 CFR Part 101) is non-negotiable canonical for ferc_account fields."
+  - "For permit bucket A1 (federal): T1 federal regulation always wins."
+  - "For permit bucket A2 (state): T1 state regulation always wins."
+  - "For permit bucket A4/A5 (asset/activity-specific): use the issuing authority's published procedure (often T1 or T4)."
+
+# ============================================================
+# CITATION CONTRACT
+# ============================================================
+citation_required_fields:
+  - source_id
+  - tier                             # T1..T5
+  - title
+  - publisher
+  - url_or_doc_id
+  - access_date_iso                  # ISO 8601 date
+  - vintage_iso                      # source publication date
+  - license                          # ∈ enums.license
+  - geography_scope
+  - notes
+
+# ============================================================
+# OUT OF BOUNDS — sources that may NOT be used
+# ============================================================
+out_of_bounds:
+  - "Paywalled content without verified license"
+  - "Login-required content (without explicit access permission)"
+  - "Marketing pages (contractor SEO, vendor brochures with pricing)"
+  - "ToS-violating scraped pages"
+  - "Aggregators (PrivCo-style, ZoomInfo, Crunchbase commercial-tier) without primary citation"
+  - "AI-generated content as primary basis"
+  - "Vendor pricing brochures (scope language only is OK; never pricing)"

@@ -1,0 +1,895 @@
+schema_version: 4.0.0
+last_reviewed: 2026-05-14
+authority: "skill canonical — closed world; no values added without explicit user approval. Enums grouped by dimension; comments anchor each section."
+
+# ============================================================
+# UTILITY DOMAIN (v4 activates GAS per ADR-16)
+# Authority: 18 CFR Part 101 (Electric) + 18 CFR Part 201 (Natural Gas)
+# ============================================================
+utility_domain:
+  - ELECTRIC
+  - GAS_TRANSMISSION         # NEW v4 — Part 201 transmission scope
+  - GAS_DISTRIBUTION         # NEW v4 — Part 201 distribution scope
+  - UNKNOWN
+  # v5 candidates (NOT active in v4; refuse with OUT_OF_SCOPE):
+  # WATER_DISTRIBUTION, WATER_TRANSMISSION, TELECOM_OSP, CIVIL_COMMON
+
+# ============================================================
+# WBS-A LEVEL CODES — Electric T&D physical assets + ACQ soft costs
+# Dot-path: <L1>.<L2>.<L3>.<L4>.<L5>.<L6>
+# Example: E.T.SUB.CON.BGR.FDN
+# ============================================================
+wbs_l1_electric:
+  - E   # Electric (root)
+
+wbs_l2_electric:
+  - T   # Transmission (≥69 kV)
+  - D   # Distribution (<69 kV)
+
+wbs_l3_electric:
+  - SUB # Substation
+  - LIN # Line (overhead and underground)
+
+wbs_l4_electric:
+  - CON # Construction (direct asset-producing physical work)
+  - ACQ # Acquisitions / Project Soft Costs (NEW in v3 — replaces PDL)
+  # DEPRECATED in v3:
+  # PDL — Project Delivery (split into WBS-B for labor + ACQ for tangibles per ADR-12)
+
+wbs_l5_electric:
+  # CON.* L5 family codes
+  - BGR   # Below Grade — structural foundations / grounding only (NOT underground utility)
+  - UGD   # Underground — UG utility infrastructure (cables, conduit, manholes, etc.)
+  - OVH   # Overhead — line structures (LIN only)
+  - WIR   # Wire — overhead conductors (LIN only)
+  - SCT   # Sectionalizing — switches/reclosers on conductors (LIN only)
+  - FIB   # Fiber / Comms
+  - GCO   # General Conditions — project-wide indirects (mob, traffic, security, etc.)
+  - MEQ   # Major Equipment — transformers, breakers, switches (SUB; D-LIN only)
+  - STC   # Site Conditions — physical site factors (LIN T and D only)
+  - BUS   # Buswork (SUB only)
+  - CAB   # Control / LV Cable (SUB only)
+  - CHS   # Control House (SUB only)
+  - PRO   # Protection & Control (SUB only)
+  - SEC   # Security — permanent infrastructure (SUB only)
+  - SSV   # Station Service (SUB only)
+  - STR   # Above-Grade Structures (SUB only)
+  - SWK   # Sitework / Yard Prep (SUB only)
+  # ACQ.* L5 family codes (NEW in v3)
+  - LND   # Land (SUB.ACQ only)
+  - ROW   # Right of Way (LIN.ACQ only)
+  - PER   # Permitting (ACQ branch)
+  - ENV   # Environmental (ACQ branch)
+  - SIT   # Siting (ACQ branch)
+  - ICN   # Interconnection Fees (ACQ branch)
+  - TST   # Testing — 3rd-party (ACQ branch)
+  # NOTE: PER/ENV/SIT were previously L5 family codes under PDL (labor pools).
+  # In v3 those labor pools moved to WBS-B (LBR.IND.*). The L5 codes are
+  # repurposed for tangible ACQ items (permit fees, environmental application
+  # fees, siting application fees). Context disambiguation: L4 = ACQ → tangibles;
+  # L2 = LBR (WBS-B) → labor pools.
+
+wbs_l6_electric:
+  # L6 codes — partial enumeration; per (branch, L5) the exact valid set
+  # is constrained by examples.yaml and source_catalog. Add new codes via
+  # explicit user approval; do not invent.
+
+  # --- BGR (foundations/grounding) ---
+  - FDN  # Foundation (drilled pier, spread footing — general structure foundation)
+  - DEM  # Direct Embed (pole buried in earth, no concrete)
+  - MAT  # Mat Foundation (large slab foundation)
+  - PAD  # Equipment Pad (concrete pad for transformer/breaker)
+  - GGD  # Ground Grid (buried copper grid)
+  - GRR  # Ground Rods (driven copper rods) — renamed from GRD to avoid collision
+  - OCT  # Oil Containment (concrete vault under oil-filled transformers)
+
+  # --- UGD (underground utility) ---
+  - CBL  # Underground Power Cable
+  - CDT  # Conduit (empty raceway)
+  - DBR  # Direct Buried (cable laid in earth, no conduit)
+  - HHD  # Handhole (small underground pull box)
+  - MNH  # Manhole (large underground vault)
+  - RSR  # Riser (UG-to-AG transition conduit)
+  - TRM  # UG Termination (cable end-point / pothead)
+  - TRN  # Cable Trench (open cable trough)
+
+  # --- OVH (overhead structures) ---
+  - POL  # Pole
+  - TWR  # Tower
+  - GUY  # Guying
+  - GND  # Grounding (overhead conductor system)
+  - INS  # Insulators
+  - PRD  # Protective Devices
+  - ATT  # Attachments
+
+  # --- WIR (overhead conductors) ---
+  - CND  # Conductor
+  - OHG  # OHGW / Shield Wire / OHSW (canonical term: Shield Wire per A_RULE_06)
+
+  # --- SCT (sectionalizing) ---
+  - DSC  # Disconnect Switch
+  - REC  # Recloser
+  - ACS  # Accessories
+  - VTX  # Voltage Transformer (VT) — formerly PT (per IEEE C57.13, A_RULE_06)
+
+  # --- FIB ---
+  - OPG  # OPGW
+  - ADS  # ADSS
+  - SPL  # Fiber Splice
+  - ENC  # Splice Enclosure
+  - PCH  # Patch Panel
+  - CMC  # Comms Cabinet — renamed from CAB to avoid L5 collision
+
+  # --- GCO (indirect, project-wide) ---
+  - ACC  # Access (temp haul roads)
+  - ESC  # E&S Controls
+  - GWT  # Groundwater / Dewatering
+  - MOB  # Mobilization / Demobilization
+  - RCL  # Reclamation (post-construction site restoration; SUB only) — per ADR-09
+  - CLR  # Clearing (vegetation/tree removal; LIN only) — per ADR-09
+  - ROC  # Rock / Rock Mitigation
+  - SCS  # Temp Construction Security — renamed from SEC to avoid L5 collision
+  - SVY  # Survey & Staking
+  - TCO  # Traffic Control
+
+  # --- MEQ ---
+  - BRK  # Circuit Breaker
+  - CAP  # Capacitor Bank
+  - CTX  # Current Transformer
+  - GOS  # Grounding Switch
+  - REA  # Reactor
+  - REG  # Voltage Regulator
+  - SRA  # Surge Arrester (NOT "Arrestor" per A_RULE_06)
+  - SWT  # Disconnect / Air Switch
+  - TRF  # Power Transformer (SUB) / Line Transformer (D-LIN)
+
+  # --- STC (Site Conditions — LIN T & D only) ---
+  - UTC  # Existing Utility Conflict
+  - PAV  # Pavement Restoration
+  - SRF  # Surface Restoration
+  - GRD  # Grading
+
+  # --- CHS (Control House — SUB only) ---
+  - BAT  # Station Battery
+  - CHG  # Battery Charger
+  - FIR  # Fire Protection / Detection
+  - HVC  # HVAC
+  - LIT  # Interior Lighting / Yard Lighting
+  - SHL  # Building Shell
+  - UPS  # UPS / DC System
+
+  # --- PRO (Protection & Control — SUB only) ---
+  - ANN  # Annunciator
+  - H2D  # Hydrogen Detection
+  - HMI  # HMI / Local Panel
+  - MTR  # Revenue Metering
+  - REL  # Protective Relays
+  - SCD  # SCADA / RTU
+  - SYN  # Synchronizer
+  - WEA  # Weather Station
+  - PWR  # Internal Panel Wiring — renamed from WIR to avoid L5 collision
+
+  # --- SEC (Permanent Security — SUB only L5) ---
+  - ACT  # Access Control — renamed from ACS to avoid SCT.ACS collision
+  - ALM  # Intrusion Alarm
+  - CCT  # CCTV
+  - FNC  # Perimeter Fence
+  - GAT  # Gates
+  - SGN  # Signage
+
+  # --- SSV (Station Service — SUB only) ---
+  - ATS  # Auto Transfer Switch
+  - GEN  # Generator
+  - LSW  # Light Switches / Receptacles
+  - PAN  # AC Panels
+  - SST  # Station Service Transformer
+  - SSW  # Safety Switch
+
+  # --- STR (Above-Grade Structures — SUB only) ---
+  - BSP  # Bus Support Structure — renamed from BUS to avoid L5 collision
+  - DED  # Deadend Structure
+  - EQP  # Equipment Support Structure
+  - GAN  # Gantry
+  - LMA  # Lightning / Static Mast
+  - PNT  # Paint / Coating
+
+  # --- SWK (Sitework — SUB only) ---
+  - CVT  # Culvert
+  - DRN  # Stormwater Drainage
+  - EXC  # Mass Excavation
+  - FIL  # Structural / Engineered Fill
+  - RDX  # Road Crossing / Entrance
+  - SUR  # Crushed-Stone Yard Surfacing
+  # GRD listed under STC above
+  # PAV listed under STC above
+  # UTC listed under STC above
+
+  # --- ACQ.LND / ACQ.ROW (tangibles) ---
+  - FEE  # Purchase / Easement Fees (per EPI 7)
+  # NOTE: ACQ branch reuses higher-level codes via path context, not via
+  # unique L6 codes. E.g., ACQ.PER.PRM uses PRM (Permit) as L6;
+  # ACQ.ENV.APP uses APP (Application Fee) as L6.
+
+  # --- ACQ.PER.* (Permitting tangibles) ---
+  - PRM  # Permit Fees
+  - APP  # Application Fees (NEPA, CPCN, environmental, siting)
+
+  # --- ACQ.ENV.* / ACQ.SIT.* ---
+  - RPT  # Studies & Reports (third-party deliverables)
+
+# ============================================================
+# WBS-B LEVEL CODES — Labor (NEW in v3 — no FERC tags)
+# Dot-path: <L1>.<L2>.<L3>
+# Example: LBR.DIR.ELE, LBR.IND.ENG
+# ============================================================
+wbs_b_l1:
+  - LBR   # Labor root (no T/D distinction)
+
+wbs_b_l2:
+  - DIR   # Direct Labor
+  - IND   # Indirect Labor
+
+wbs_b_l3_direct:
+  - CIV   # Civil
+  - ELE   # Electrical
+  - MEC   # Mechanical
+  - SVY   # Survey
+  - OPE   # Equipment Operations
+
+wbs_b_l3_indirect:
+  - ENG   # Engineering
+  - PMG   # Project Management
+  - CMG   # Construction Management
+  - ENV   # Environmental
+  - PER   # Permitting
+  - SIT   # Siting
+  - COM   # Commissioning
+  - QAQ   # QA / QC
+  - SAF   # Safety
+  - LRA   # Land / ROW Administration
+
+# ============================================================
+# FERC USoA — closed-world account lists (Part 101 + Part 201)
+# Disjoint by code-Part affiliation. Account 365 means different things
+# in Part 101 vs Part 201 — every WBS_FERC_Linkage row carries a
+# ferc_part tag. Authority: 18 CFR Parts 101/201 (eCFR last amended
+# 2026-02-19); Order No. 898 effective 2025-01-01 added 351, 363
+# (storage), 158 (environmental credits), and computer/comms sub-accounts
+# under 391/397 — see source_catalog.yaml.
+# Full descriptions live in FERC_Accounts workbook tab.
+# ============================================================
+ferc_account_part_101:
+  # Preliminary / Intangible
+  - "183"  # Preliminary Survey and Investigation Charges
+  - "301"  # Organization
+  - "302"  # Franchises and Consents
+  - "303"  # Miscellaneous Intangible Plant
+  # Transmission Plant (T)
+  - "350"  # Land and Land Rights
+  - "351"  # Energy Storage Equipment — Transmission (NEW per Order 898, eff 2025-01-01)
+  - "352"  # Structures and Improvements
+  - "353"  # Station Equipment
+  - "354"  # Towers and Fixtures
+  - "355"  # Poles and Fixtures
+  - "356"  # Overhead Conductors and Devices
+  - "357"  # Underground Conduit
+  - "358"  # Underground Conductors and Devices
+  - "359"  # Roads and Trails
+  - "359.1" # Asset Retirement Costs for Transmission Plant (ADDED v4)
+  # Distribution Plant (D)
+  - "360"  # Land and Land Rights
+  - "361"  # Structures and Improvements
+  - "362"  # Station Equipment
+  - "363"  # Energy Storage Equipment — Distribution (relabeled per Order 898; pre-898 name was "Storage Battery Equipment")
+  - "364"  # Poles, Towers and Fixtures
+  - "365"  # Overhead Conductors and Devices
+  - "366"  # Underground Conduit
+  - "367"  # Underground Conductors and Devices
+  - "368"  # Line Transformers
+  - "369"  # Services
+  - "370"  # Meters
+  - "371"  # Installations on Customer Premises
+  - "372"  # Leased Property on Customer Premises (ADDED v4)
+  - "373"  # Street Lighting and Signal Systems
+  - "374"  # Asset Retirement Costs for Distribution Plant
+  # Balance Sheet — Environmental Credits (NEW per Order 898)
+  - "158.1" # Allowance Inventory
+  - "158.2" # Allowances Withheld
+  - "158.3" # Environmental Credits — Renewable Energy (formerly REC accounting)
+  - "158.4" # Environmental Credits — Carbon / Emissions
+  - "UNKNOWN"
+
+# v3 alias — DEPRECATED in v4. Use ferc_account_part_101.
+# Removed in v5. Kept here so legacy refs don't immediately break.
+ferc_account_electric:
+  - "see_ferc_account_part_101_DEPRECATED_v4"
+
+# ============================================================
+# FERC Part 201 — 18 CFR Part 201 Natural Gas (NEW v4 per ADR-16)
+# Authority: 18 CFR Part 201 (eCFR) + Bobby's da.usoa dim YAMLs +
+# gas_ferc_account_universe.md (UUIDv7 019e25c1-e483 in 47.01-generated-docs).
+# Numbers numerically overlap Part 101 (300-399 range) — distinguished by
+# ferc_part tag on every WBS_FERC_Linkage row.
+# ============================================================
+ferc_account_part_201:
+  # Intangible Plant (same numbers as Part 101, different Part)
+  - "301"   # Organization
+  - "302"   # Franchises and Consents
+  - "303"   # Miscellaneous Intangible Plant
+  # Production and Gathering Plant (out-of-scope for typical NE LDC)
+  - "304"   # Land and Land Rights (production)
+  - "305"   # Structures and Improvements (production)
+  - "306"   # Wells
+  - "307"   # Field Lines
+  - "308"   # Field Compressor Station Structures
+  - "309"   # Field Compressor Station Equipment
+  - "310"   # Field Measuring and Regulating Station Equipment
+  - "311"   # Field Purification Equipment
+  - "312"   # Other Field Equipment
+  - "313"   # Asset Retirement Costs for Field Equipment
+  - "314"   # Producing Gas Wells — Well Construction
+  - "315"   # Producing Gas Wells — Well Equipment
+  - "316"   # Field Lines (alternate)
+  - "317"   # Other Equipment
+  - "319"   # Asset Retirement Costs for Production and Gathering Plant
+  - "320"   # Other Production Plant — Asset Retirement Costs
+  # Products Extraction Plant (out-of-scope for typical NE LDC)
+  - "340"   # Land and Land Rights (extraction)
+  - "341"   # Structures and Improvements (extraction)
+  - "342"   # Extraction and Refining Equipment
+  - "343"   # Pipe Lines (extraction)
+  - "344"   # Extracted Products Storage Equipment
+  - "345"   # Compressor Equipment (extraction)
+  - "346"   # Gas Measuring and Regulating Equipment (extraction)
+  - "347"   # Other Equipment (extraction)
+  # Underground Storage Plant
+  - "350"   # Land (storage)
+  - "350.1" # Land Rights (storage)
+  - "351"   # Structures and Improvements (storage)
+  - "352"   # Wells (storage)
+  - "352.1" # Storage Leaseholds and Rights
+  - "352.2" # Reservoirs
+  - "352.3" # Non-Recoverable Natural Gas
+  - "353"   # Lines (storage)
+  - "354"   # Compressor Station Equipment (storage)
+  - "355"   # Measuring and Regulating Station Equipment (storage)
+  - "356"   # Purification Equipment (storage)
+  # Other Storage Plant + LNG Peak-Shaving
+  - "360"   # Land and Land Rights (other storage)
+  - "361"   # Structures and Improvements (other storage)
+  - "362"   # Gas Holders
+  - "363"   # Purification Equipment (other storage)
+  - "363.1" # Liquefaction Equipment (LNG peak-shaving)
+  - "363.2" # Vaporizing Equipment (LNG peak-shaving)
+  - "363.3" # Compressor Equipment (LNG peak-shaving)
+  - "363.4" # Measuring and Regulating Equipment (LNG peak-shaving)
+  - "363.5" # Other Equipment (LNG peak-shaving)
+  # Base Load LNG Terminaling and Processing Plant
+  - "364.1" # Land and Land Rights (LNG terminaling)
+  - "364.2" # Structures and Improvements (LNG terminaling)
+  - "364.3" # LNG Processing Terminal Equipment
+  - "364.4" # LNG Transportation Equipment
+  - "364.5" # Measuring and Regulating Equipment (LNG terminaling)
+  - "364.6" # Compressor Station Equipment (LNG terminaling)
+  - "364.7" # Communications Equipment (LNG terminaling)
+  - "364.8" # Other Equipment (LNG terminaling)
+  # Transmission Plant (gas high-pressure transmission)
+  - "365"   # Land and Land Rights (gas T)
+  - "365.1" # Land Rights — gas transmission (sub-account)
+  - "365.2" # Rights-of-Way — gas transmission
+  - "366"   # Structures and Improvements (gas T)
+  - "367"   # Mains (gas T — high-pressure transmission pipeline; primary capital account)
+  - "368"   # Compressor Station Equipment (gas T)
+  - "369"   # Measuring and Regulating Station Equipment (gas T)
+  - "370"   # Communication Equipment (gas T)
+  - "371"   # Other Equipment (gas T)
+  # Distribution Plant (gas distribution — primary NE LDC scope)
+  - "374"   # Land and Land Rights (gas D)
+  - "375"   # Structures and Improvements (gas D)
+  - "376"   # Mains (gas D — primary distribution capital account)
+  - "377"   # Compressor Station Equipment (gas D — rare in NE)
+  - "378"   # M&R Station Equipment — General (district regulators)
+  - "379"   # M&R Station Equipment — City Gate Check Stations
+  - "380"   # Services (gas D — service drops main→customer)
+  - "381"   # Meters (gas D)
+  - "382"   # Meter Installations
+  - "383"   # House Regulators
+  - "384"   # House Regulator Installations
+  - "385"   # Industrial M&R Station Equipment
+  - "386"   # Other Property on Customer Premises
+  - "387"   # Other Equipment (gas D)
+  # General Plant (shared structure with Part 101, same numbers)
+  - "389"   # Land and Land Rights (general)
+  - "390"   # Structures and Improvements (general)
+  - "391"   # Office Furniture and Equipment (computer hardware sub-accts post-Order-898)
+  - "392"   # Transportation Equipment (fleet)
+  - "393"   # Stores Equipment
+  - "394"   # Tools, Shop and Garage Equipment
+  - "395"   # Laboratory Equipment
+  - "396"   # Power Operated Equipment
+  - "397"   # Communication Equipment (SCADA/telecom sub-accts post-Order-898)
+  - "398"   # Miscellaneous Equipment
+  - "399"   # Other Tangible Property
+  - "399.1" # Asset Retirement Costs for General Plant
+  - "UNKNOWN"
+
+# NEW v4 — code-Part affiliation tag per ADR-16.
+# Every WBS_FERC_Linkage row MUST carry exactly one ferc_part value.
+ferc_part:
+  - PART_101                 # 18 CFR Part 101 (Electric Public Utilities, Federal Power Act)
+  - PART_201                 # 18 CFR Part 201 (Natural Gas Companies, Natural Gas Act)
+  - UNKNOWN
+
+ferc_account_class:
+  - INVESTIGATION              # 183 (Part 101 only)
+  - INTANGIBLE                 # 301, 302, 303 (both Parts)
+  - TRANSMISSION_ELECTRIC      # Part 101: 350-359.1
+  - DISTRIBUTION_ELECTRIC      # Part 101: 360-374
+  - PRODUCTION_GATHERING_GAS   # Part 201: 304-320 (NEW v4)
+  - PRODUCTS_EXTRACTION_GAS    # Part 201: 340-347 (NEW v4)
+  - UNDERGROUND_STORAGE_GAS    # Part 201: 350-356 (NEW v4)
+  - OTHER_STORAGE_GAS          # Part 201: 360-363.5 (NEW v4)
+  - LNG_TERMINALING_GAS        # Part 201: 364.1-364.8 (NEW v4)
+  - TRANSMISSION_GAS           # Part 201: 365-371 (NEW v4)
+  - DISTRIBUTION_GAS           # Part 201: 374-387 (NEW v4)
+  - GENERAL_PLANT              # 389-399 (both Parts)
+  - ENVIRONMENTAL_CREDITS      # 158.1-158.4 (NEW v4 per Order 898)
+
+ferc_branch_applicability:
+  - T_ONLY                     # T contexts (Part 101: 350, 352-359.1; Part 201: 365-371)
+  - D_ONLY                     # D contexts (Part 101: 360-374; Part 201: 374-387)
+  - BOTH                       # Both T and D (Part 101: 183)
+  - INTANGIBLE_ONLY            # 301, 302, 303 (both Parts)
+  - PRODUCTION_ONLY            # Part 201 production (304-320) — NEW v4
+  - STORAGE_ONLY               # Part 201 storage (350-356, 360-363.5, 364.1-364.8) — NEW v4
+  - GENERAL_ONLY               # General Plant (389-399, both Parts)
+  - ENVIRONMENTAL_ONLY         # 158 series Environmental Credits — NEW v4 per Order 898
+
+ferc_account_basis:
+  # How does a row's FERC get determined? Used in Permits.ferc_account_basis.
+  - SPECIFIC_ACCOUNT             # Always routes to one specific account
+  - INHERITS_FROM_ENABLED_ASSET  # Inherits FERC from the WBS-A asset it attaches to at CU layer
+  - ACCOUNT_183_TRANSFERS        # Pre-commitment in 183; transfers to plant account on commit (per EPI 3(20))
+  - FERC_303_INTANGIBLE          # Only for genuinely intangible items (patents, franchises, licenses)
+  - INHERITS_FROM_STATE_OVERLAY  # NEW v4 — routing modified by state overlay (e.g., NY PSC RDM/EAM/REV deferred-asset)
+
+# ============================================================
+# PERMIT TAXONOMY (NEW in v3)
+# ============================================================
+permit_bucket:
+  - A1_FEDERAL              # Federal, project-wide
+  - A2_STATE                # State-level, project-wide per state
+  - A3_LOCAL                # Local/municipal, project-wide per jurisdiction
+  - A4_ASSET_CROSSING       # Asset / crossing / site-specific (per instance)
+  - A5_ACTIVITY             # Activity-specific (per construction method/event)
+
+permit_scope:
+  - PROJECT                 # Whole project (A1, A2, A3)
+  - CORRIDOR                # Linear corridor section
+  - PER_CROSSING            # Per individual crossing instance
+  - PER_SITE                # Per individual site (substation, structure)
+  - PER_EVENT               # Per construction event (blast, lift, etc.)
+
+permit_cost_treatment:
+  - CAPITALIZED             # Capitalized to plant via WBS_FERC_Linkage
+  - EXPENSED                # O&M expense (e.g., post-in-service operating permits)
+  - MIXED                   # Some capitalized, some expensed
+
+# ============================================================
+# JOIN-TAB COMMON ENUMS (NEW in v3)
+# ============================================================
+granularity:
+  - L5_WILDCARD             # Applies to all L6 children of the L5
+  - L6_SPECIFIC             # Explicit L6 entry; overrides L5 wildcard
+
+applicability:
+  - PRIMARY                 # Default routing for this WBS-A code
+  - SECONDARY               # Alternative; documents but not the default
+  - CONDITIONAL             # Applies only if `condition` text triggers; surfaces as alternative
+
+# Used in WBS_FERC_Linkage to disambiguate the same code across branches.
+# Electric branches use E.* prefix; gas branches use G.* prefix per ADR-16.
+branch_context:
+  # Electric branches (Part 101 scope)
+  - T_SUB                   # E.T.SUB.* (electric transmission substation)
+  - T_LIN                   # E.T.LIN.* (electric transmission line)
+  - D_SUB                   # E.D.SUB.* (electric distribution substation)
+  - D_LIN                   # E.D.LIN.* (electric distribution line)
+  - ALL_T                   # E.T.* (any electric T branch)
+  - ALL_D                   # E.D.* (any electric D branch)
+  # Gas branches (Part 201 scope) — NEW v4 per ADR-16
+  - G_TPIPE                 # G.T.PIPE.* (gas transmission pipeline / mains)
+  - G_TCS                   # G.T.CS.*   (gas transmission compressor station)
+  - G_TSTG                  # G.T.STG.*  (gas transmission storage — underground / LNG)
+  - G_DMAIN                 # G.D.MAIN.* (gas distribution main)
+  - G_DSVC                  # G.D.SVC.*  (gas distribution service / meter / regulator)
+  - G_DSTN                  # G.D.STN.*  (gas distribution city gate / industrial M&R)
+  - ALL_G_T                 # G.T.* (any gas T branch)
+  - ALL_G_D                 # G.D.* (any gas D branch)
+  - ALL                     # Cross-branch (rare)
+
+# ============================================================
+# STATE OVERLAY (NEW v4 — 5th matrix dimension per ADR-17)
+# Every WBS_FERC_Linkage row + every estimate row may carry a state_overlay
+# tag identifying which jurisdictional overlay applies. FEDERAL_ONLY means
+# federal canon (Part 101/Part 201) applies without state-overlay modification.
+# Authority: NY PSC 16 NYCRR + adjacent NE state PUCs. NY canonical;
+# NJ/CT/MA/PA/ME/VT/NH/RI adjacent per ferc-accounting-brief.
+# ============================================================
+state_overlay:
+  - NY_PSC                  # New York Public Service Commission (16 NYCRR) — canonical
+  - NJ_BPU                  # New Jersey Board of Public Utilities
+  - PA_PUC                  # Pennsylvania Public Utility Commission (Title 66)
+  - CT_PURA                 # Connecticut Public Utilities Regulatory Authority
+  - MA_DPU                  # Massachusetts Department of Public Utilities
+  - ME_PUC                  # Maine Public Utilities Commission
+  - VT_PUC                  # Vermont Public Utility Commission
+  - NH_PUC                  # New Hampshire Public Utilities Commission
+  - RI_PUC                  # Rhode Island Public Utilities Commission
+  - FEDERAL_ONLY            # No state overlay applies (federal Form 1/Form 2 only)
+  - UNKNOWN
+
+# ============================================================
+# RTO/ISO SETTLEMENT (NEW v4 per ADR-18)
+# Used in settlement view (third accounting view) to map RTO/ISO charges
+# and credits to FERC accounts (456 / 557 / 565) at monthly close.
+# Northeast scope: NYISO (NY only) + ISO-NE (MA/CT/RI/VT/ME/NH) + PJM (NJ/PA).
+# ============================================================
+rto_iso:
+  - NYISO                   # New York Independent System Operator
+  - ISO_NE                  # ISO New England
+  - PJM                     # PJM Interconnection (NJ, PA, plus mid-Atlantic)
+  - NONE                    # Utility not in an RTO/ISO footprint
+  - UNKNOWN
+
+# ============================================================
+# ACCOUNTING VIEW (NEW v4 — three-view per ADR-08 expansion + ADR-18)
+# Same template data serves three downstream consumers:
+#   ESTIMATING       — Class 5→1 estimate construction (ADR-08 estimating view)
+#   CAPITALIZATION   — Plant-account booking at in-service (ADR-08 capitalization view)
+#   SETTLEMENT       — Monthly RTO/ISO + state-overlay reconciliation (NEW v4)
+# ============================================================
+accounting_view:
+  - ESTIMATING              # Pre-commitment cost-tracking view
+  - CAPITALIZATION          # Plant-account booking at in-service
+  - SETTLEMENT              # NEW v4 — RTO/ISO + state-overlay reconciliation
+
+# ============================================================
+# UNIT OF MEASURE
+# ============================================================
+uom:
+  - EA
+  - LF
+  - CY
+  - SY
+  - SF
+  - TON
+  - LB
+  - HR
+  - DAY
+  - LS
+  - MILE
+  - KFT
+  - GAL
+  - Per_Location
+  - Per_Job
+  - UNKNOWN
+
+uom_conversions:
+  LF_to_MILE: 0.000189394
+  KFT_to_LF: 1000
+  KFT_to_MILE: 0.189394
+  CY_to_SY_at_1ft_depth: 1.0
+  TON_to_LB: 2000
+  GAL_to_CF: 0.133681
+
+# ============================================================
+# CONFIDENCE, LICENSE, VINTAGE, STATUS
+# ============================================================
+confidence: [HIGH, MEDIUM, LOW, UNKNOWN]
+license: [PUBLIC, PUBLIC_WITH_ATTRIBUTION, RESTRICTED, UNKNOWN]
+vintage_window: [CURRENT, RECENT, STALE, UNKNOWN]   # CURRENT ≤24mo, RECENT 24-60mo, STALE >60mo
+
+geography:
+  - US_NORTHEAST
+  - US_NEW_ENGLAND
+  - US_MID_ATLANTIC
+  - STATE_PA
+  - STATE_NJ
+  - STATE_NY
+  - STATE_CT
+  - STATE_MA
+  - STATE_RI
+  - STATE_VT
+  - STATE_NH
+  - STATE_ME
+  - STATE_DE
+  - STATE_MD
+  - STATE_DC
+  - US_NATIONAL_AVG
+  - UNKNOWN
+
+status: [candidate, active, deprecated, rejected]
+
+# ============================================================
+# LABOR CLASSIFICATIONS (CBS — specific job classes; live in Labor_Rates)
+# Each class has a single rollup to a WBS-B leaf (see definitions.yaml).
+# ============================================================
+labor_classification_electric_transmission:
+  - General_Foreman
+  - Foreman
+  - Lineman_Journeyman
+  - Lineman_Apprentice
+  - Groundman
+  - Equipment_Operator_Heavy
+  - Equipment_Operator_Crane
+  - Equipment_Operator_Drill
+  - CDL_Driver
+
+labor_classification_electric_distribution:
+  - General_Foreman
+  - Foreman
+  - Lineman_Journeyman
+  - Lineman_Apprentice
+  - Groundman
+  - Cable_Splicer_Journeyman
+  - Cable_Splicer_Apprentice
+  - Equipment_Operator
+  - CDL_Driver
+
+labor_classification_electric_substation:
+  - General_Foreman
+  - Foreman
+  - Substation_Electrician_Journeyman
+  - Substation_Electrician_Apprentice
+  - Wireman
+  - Relay_Technician
+  - Test_Technician
+  - Ironworker
+  - Millwright
+  - Equipment_Operator_Crane
+  - Equipment_Operator_Heavy
+
+labor_classification_civil_common:
+  - General_Foreman
+  - Foreman
+  - Carpenter
+  - Concrete_Finisher
+  - Form_Setter
+  - Rebar_Worker
+  - Laborer_Skilled
+  - Laborer_General
+  - Equipment_Operator_Excavator
+  - Equipment_Operator_Backhoe
+  - Equipment_Operator_Loader
+  - Equipment_Operator_Dozer
+  - Equipment_Operator_Roller
+  - Equipment_Operator_Skidsteer
+  - Flagger
+  - Surveyor
+  - CDL_Driver
+  - Mechanic
+
+labor_classification_indirect:
+  - Senior_Civil_Engineer
+  - Civil_Engineer
+  - Senior_Electrical_Engineer
+  - Electrical_Engineer
+  - Senior_Mechanical_Engineer
+  - Mechanical_Engineer
+  - Project_Manager_I
+  - Project_Manager_II
+  - Project_Manager_III
+  - Construction_Manager
+  - Field_Engineer
+  - QAQC_Inspector
+  - Safety_Officer
+  - Environmental_Specialist
+  - Permitting_Specialist
+  - Siting_Specialist
+  - Commissioning_Engineer
+  - Land_ROW_Agent
+  - Drafter
+  - Estimator
+
+# ============================================================
+# EQUIPMENT CLASSES
+# ============================================================
+equipment_class:
+  - Bucket_Truck_Single
+  - Bucket_Truck_Double
+  - Digger_Derrick
+  - Crane_Hydraulic
+  - Crane_Crawler
+  - Crane_Lattice
+  - Excavator_Mini
+  - Excavator_Standard
+  - Excavator_Large
+  - Backhoe_Loader
+  - Wheel_Loader
+  - Track_Loader
+  - Dozer
+  - Vacuum_Excavator
+  - HDD_Rig_Small
+  - HDD_Rig_Large
+  - Trencher_Walk_Behind
+  - Trencher_Ride_On
+  - Plow_Vibratory
+  - Roller_Compactor
+  - Skid_Steer
+  - Material_Handler
+  - Pickup_Truck
+  - Service_Truck
+  - Pole_Trailer
+  - Reel_Trailer
+  - Generator_Portable
+  - Pump_Dewatering
+  - UNKNOWN
+
+# ============================================================
+# CANONICAL VERBS — A_RULE_07 phrase pattern
+# ============================================================
+canonical_verbs:
+  - Install
+  - Remove
+  - Splice
+  - Terminate
+  - Test
+  - Energize
+  - De-Energize
+  - Excavate
+  - Backfill
+  - Trench
+  - Bore
+  - Plow
+  - Set
+  - Frame
+  - String
+  - Sag
+  - Climb
+  - Inspect
+  - Survey
+  - Stake
+  - Restore
+  - Patch
+  - Mill
+  - Pave
+  - Saw_Cut
+  - Locate
+  - Pothole
+  - Weld
+  - Pressure_Test
+
+forbidden_at_unit_level:
+  - Replace          # A_RULE_04: decompose to Remove + Install
+
+# ============================================================
+# IEEE/ANSI TERMINOLOGY LOCK (A_RULE_06)
+# Maps non-canonical input variants → canonical form.
+# ============================================================
+canonical_terminology:
+  Arrestor: Surge Arrester
+  Arrester: Surge Arrester
+  Air Switch: Disconnect Switch
+  PT: VT
+  Potential Transformer: Voltage Transformer
+  OHGW: Shield Wire
+  Overhead Ground Wire: Shield Wire
+  Static Wire: Shield Wire
+
+# ============================================================
+# BURDEN CATEGORIES (CU loading)
+# Lives in Burden_Factors tab; applied at CU build per Mode B step B7.
+# ============================================================
+burden_category:
+  - ENG   # Engineering
+  - PMG   # Project Management
+  - CMG   # Construction Management
+  - ENV   # Environmental
+  - PER   # Permitting
+  - SIT   # Siting / Application fees
+  - IDC   # AFUDC / Interest During Construction
+  - CON   # Contingency (only if accounting policy permits capitalization)
+
+# ============================================================
+# MODE ROUTER & ERROR/GATE TYPES
+# ============================================================
+mode:
+  - MODE_A_WBS_DEVELOPMENT
+  - MODE_B_CU_DEVELOPMENT
+  - MODE_C_PERMIT_CATALOG_BUILDING       # NEW v3
+  - MODE_D_FERC_LINKAGE_BUILDING         # NEW v3
+  - MODE_E_VALIDATION_AND_AUDIT          # NEW v3
+
+refusal_reason:
+  - OUT_OF_SCOPE
+  - MISSING_INPUT
+  - ENUM_VIOLATION
+  - INSUFFICIENT_SOURCE
+  - LICENSE_RESTRICTED
+  - AMBIGUOUS_INPUT
+  - CONFLICT_UNRESOLVED
+  - CROSS_DIMENSION_VIOLATION            # NEW v3
+
+error_type:
+  - missing_input
+  - invalid_input
+  - ambiguous_input
+  - out_of_scope
+  - gate_failure
+  - processing_error
+  - conflict_detected
+  - unknown_value
+  - license_restricted
+  - vintage_stale
+  - cross_dimension_violation            # NEW v3
+
+gate_type:
+  - enum_check
+  - regex_check
+  - path_check
+  - conflict_check
+  - completeness_check
+  - range_check
+  - referential_check
+  - citation_check
+  - vintage_check
+  - license_check
+  - novelty_check
+  - break_point_check
+  - ferc_validity_check
+  - burden_coherence_check
+  - permit_eligibility_check             # NEW v3
+  - branch_ferc_consistency_check        # NEW v3
+  - cross_dimension_check                # NEW v3
+  - matrix_coherence_check               # NEW v3
+
+deterministic_verbs:
+  classification: [classify, categorize, match, assign, label]
+  extraction: [extract, parse, identify, isolate, select]
+  validation: [validate, verify, check, confirm, assert]
+  transformation: [convert, transform, map, translate, normalize]
+  aggregation: [count, sum, average, merge, combine, deduplicate]
+  control_flow: [halt, continue, skip_to, retry, emit, reject, return, refuse]
+  comparison: [compare, diff, rank, sort, filter]
+  research: [search, locate, retrieve, cite, corroborate]
+
+forbidden_verbs:
+  - consider
+  - think_about
+  - explore
+  - try
+  - attempt
+  - look_into
+  - ponder
+  - brainstorm
+  - feel_free_to
+  - might_want_to
+  - be_creative
+
+forbidden_implicit_enumerations:
+  - include
+  - such_as
+  - for_example
+  - e.g.
+  - etc.
+  - and_more
+  - among_others
+  - various
+  - some
+  - several
+  - many
+
+drift_prevention_mechanism:
+  - DP-01-identity_anchor
+  - DP-02-scan_protocol
+  - DP-03-scope_fence
+  - DP-04-vocabulary_lock
+  - DP-05-schema_lock
+  - DP-06-decision_trace
+  - DP-07-precedence_hierarchy
+  - DP-08-scope_creep_detection
+  - DP-09-negative_examples
+  - DP-10-output_fingerprinting
+  - DP-11-matrix_coherence                # NEW v3
+  - DP-12-catalog_vs_join_discipline      # NEW v3

@@ -1,0 +1,584 @@
+schema_version: 3.0.0
+last_reviewed: 2026-05-14
+authority: "skill canonical — few-shot anchors for Modes A-E. Positive examples show desired structure; negative examples show forbidden patterns with explanation of why."
+
+# ============================================================
+# MODE A — WBS Development (both WBS-A and WBS-B)
+# ============================================================
+mode_a:
+
+  positive_examples:
+
+    A_POS_01:
+      label: "WBS-A row: T-LIN underground conduit (UGD branch, no FERC on row)"
+      scenario: "Author the WBS-A row for transmission underground cable conduit"
+      correct_emission:
+        wbs_id: "E.T.LIN.CON.UGD.CDT"
+        L1: "E"
+        L2: "T"
+        L3: "LIN"
+        L4: "CON"
+        L5: "UGD"
+        L6: "CDT"
+        element_name: "Conduit"
+        canonical_phrase: "Install Conduit PVC Schedule 40 by Open Cut"
+        definition: "Underground conduit/duct used for housing transmission cable. Empty raceway, not yet cabled."
+        scope_inclusions: "Conduit material; concrete encasement if required; primer/glue; duct sealants; trench backfill within conduit zone"
+        scope_exclusions: "Trench excavation (separate CU); cables inside conduit (E.T.LIN.UGD.CBL); manholes (E.T.LIN.UGD.MNH)"
+        is_overhead: false
+        utility_domain: ELECTRIC
+        decision_trace: "T-LIN UGD branch per ADR-12 BGR/UGD split. Scope inclusions and exclusions captured in metadata columns per A_RULE_03 (no L7 column). FERC for this row is in WBS_FERC_Linkage."
+        confidence: HIGH
+        source_refs: "18CFR101_357,PennDOT_408_Sec501"
+      teaches:
+        - "WBS-A row has NO ferc_account column"
+        - "scope_inclusions / scope_exclusions / assumptions replace the deprecated L7 hierarchy column"
+        - "UGD vs BGR split — conduit is underground utility, not foundation"
+
+    A_POS_02:
+      label: "WBS-A row: ACQ branch — Land purchase (NEW in v3)"
+      scenario: "Add a project-level land acquisition row to T-SUB.ACQ"
+      correct_emission:
+        wbs_id: "E.T.SUB.ACQ.LND.FEE"
+        L1: "E"
+        L2: "T"
+        L3: "SUB"
+        L4: "ACQ"
+        L5: "LND"
+        L6: "FEE"
+        element_name: "Land Purchase / Fees"
+        canonical_phrase: "Acquire Land Fee Simple for Substation Site"
+        definition: "Purchase price of substation land plus title, recording, broker fees, surveys (per FERC EPI 7)."
+        scope_inclusions: "Land cost; legal fees; recording; commissions; title insurance; boundary surveys (per FERC EPI 7 items 2, 7, 13)"
+        scope_exclusions: "ROW easements (those are E.T.LIN.ACQ.ROW.FEE for LIN context); environmental studies (E.T.SUB.ACQ.ENV.RPT)"
+        is_overhead: true
+        utility_domain: ELECTRIC
+        decision_trace: "ACQ.LND row per ADR-12 PDL→ACQ refactor. FERC routing in WBS_FERC_Linkage will be 350 (T-SUB) per EPI 7."
+        confidence: HIGH
+        source_refs: "18CFR101_EPI7,Versant_Capitalization_2022"
+      teaches:
+        - "ACQ branch is the v3 home for tangible third-party project costs"
+        - "is_overhead=true marks soft-cost rows for downstream rollup"
+
+    A_POS_03:
+      label: "WBS-B row: Indirect Engineering pool (NEW in v3)"
+      scenario: "Author a WBS-B row for the Engineering indirect labor pool"
+      correct_emission:
+        labor_pool_id: "LBR.IND.ENG"
+        L1: "LBR"
+        L2: "IND"
+        L3: "ENG"
+        pool_name: "Engineering"
+        definition: "Indirect engineering labor — design, drafting, calculations, plan production across all project phases."
+        typical_classifications: "Senior_Civil_Engineer | Civil_Engineer | Senior_Electrical_Engineer | Electrical_Engineer | Senior_Mechanical_Engineer | Mechanical_Engineer | Drafter"
+        utility_domain: ELECTRIC
+        status: active
+        decision_trace: "LBR.IND.ENG pool per ADR-02 two-WBS architecture. WBS-B has NO ferc_account column per A_RULE_11 / G16. FERC is determined at CU consumption time via wbs_a_link → WBS_FERC_Linkage."
+      teaches:
+        - "WBS-B rows have NO FERC tag (enforced by G16)"
+        - "WBS-B stops at L3 (discipline). Job titles (Senior_Civil_Engineer) live in CBS / Labor_Rates"
+
+    A_POS_04:
+      label: "T-LIN STC.GRD (Site Conditions: Grading) — added per ADR-11"
+      scenario: "Author the T-LIN.CON.STC.GRD row (grading associated with pole settings on a T-Line ROW)"
+      correct_emission:
+        wbs_id: "E.T.LIN.CON.STC.GRD"
+        L1: "E"
+        L2: "T"
+        L3: "LIN"
+        L4: "CON"
+        L5: "STC"
+        L6: "GRD"
+        element_name: "Grading"
+        canonical_phrase: "Grade Site for T-Line Pole Installation"
+        definition: "Site grading associated with pole installations on a transmission ROW."
+        scope_inclusions: "Earthwork; rough grading; fine grading; compaction"
+        scope_exclusions: "Foundation excavation (E.T.LIN.CON.BGR.FDN); restoration grading post-construction (E.T.LIN.CON.STC.SRF)"
+        is_overhead: false
+        utility_domain: ELECTRIC
+        decision_trace: "STC added to T-LIN per ADR-11 (sub should be different than line; LIN gets STC). FERC in linkage: 355 PRIMARY (pole-context grading) / 357 CONDITIONAL (if UG-conduit pavement)."
+      teaches: "STC L5 mirrored from D-LIN to T-LIN per user decision ADR-11"
+
+  negative_examples:
+
+    A_NEG_01:
+      label: "Vendor model in WBS label (A_RULE_01 violation)"
+      bad: "Element Name = 'Install S&C 6801M Vista Switch'"
+      why_bad: "Vendor model 'S&C 6801M Vista' is CBS specificity. WBS labels must be vendor-agnostic."
+      correct_emission:
+        wbs_id: "E.D.LIN.CON.SCT.DSC"
+        element_name: "Disconnect Switch"
+        canonical_phrase: "Install Disconnect Switch Group-Operated"
+      teaches: "A_RULE_01 — strip vendor/model/size from WBS labels; those go on Master_Cost_Units."
+
+    A_NEG_02:
+      label: "FERC column on Registry row (A_RULE_13 violation — NEW v3)"
+      bad:
+        wbs_id: "E.T.SUB.CON.MEQ.TRF"
+        ferc_account: "353 - Station Equipment"
+      why_bad: "Registry rows do NOT have a ferc_account column in v3. WBS_FERC_Linkage is sole authority for FERC mapping (per ADR-04 / A_RULE_13)."
+      correct_action: "Remove the ferc_account column entirely. Create a row in WBS_FERC_Linkage with wbs_a_code=MEQ.TRF, branch_context=T_SUB, ferc_account_number=353, applicability=PRIMARY."
+      teaches: "A_RULE_13, G12, G13. Pre-v3 denormalization of FERC into Registry forced single-account-per-row constraints that violated the matrix model."
+
+    A_NEG_03:
+      label: "WBS-B row with FERC tag (A_RULE_11 / G16 violation — NEW v3)"
+      bad:
+        labor_pool_id: "LBR.IND.ENG"
+        ferc_account: "303"
+      why_bad: "WBS-B labor pools NEVER have FERC tags. FERC is determined at CU consumption time via the WBS-A asset the labor was used for."
+      correct_action: "Remove the ferc_account column from Labor_Pools tab schema. WBS-B is FERC-free by design."
+      teaches: "A_RULE_11, G16. Same labor pool (Engineering) flows to many FERC destinations depending on what asset was engineered."
+
+    A_NEG_04:
+      label: "L7 column reappears as 'assumptions' (A_RULE_03 retired)"
+      bad: "Emit row with L7 = 'Suburban access; clear weather; 8-hour shift'"
+      why_bad: "L7 was retired in v2 and stays retired in v3. Per-row assumptions live in the 'assumptions' metadata column on the L6 row."
+      correct_emission: "Put 'Suburban access; clear weather; 8-hour shift' in the 'assumptions' column; do NOT emit a 7th level."
+      teaches: "Stop at L6. L7-style metadata becomes a column, not a level. P8 / A_RULE_03."
+
+    A_NEG_05:
+      label: "BGR and UGD conflated (ADR-12 violation)"
+      bad: "wbs_id = 'E.T.LIN.CON.BGR.CDT' (conduit under BGR)"
+      why_bad: "Conduit is underground utility infrastructure (UGD), not a structural foundation (BGR)."
+      correct_emission:
+        wbs_id: "E.T.LIN.CON.UGD.CDT"
+        L5: "UGD"
+      teaches: "BGR is structural foundations only. Conduit, manhole, riser, etc. belong in UGD."
+
+    A_NEG_06:
+      label: "Cross-branch FERC tag (G15 violation — NEW v3)"
+      bad:
+        wbs_a_code: "OVH.POL"
+        branch_context: "T_LIN"
+        ferc_account_number: "364"  # Distribution-only account
+      why_bad: "T_LIN branch_context can only link to FERC accounts with branch_applicability ∈ {T_ONLY, BOTH, INTANGIBLE_ONLY}. 364 is D-only."
+      correct_emission:
+        ferc_account_number: "355"  # T-Line Poles and Fixtures
+      teaches: "G15 — Branch-FERC consistency. Validation prevents D account on T row and vice versa."
+
+    A_NEG_07:
+      label: "Code-meaning collision across branches (ADR-09 violation)"
+      bad:
+        wbs_id_1: "E.T.SUB.CON.GCO.RCL"
+        element_name_1: "Reclamation"
+        wbs_id_2: "E.T.LIN.CON.GCO.RCL"
+        element_name_2: "ROW Clearing"
+      why_bad: "Same code RCL means different things in different branches — closed-world violation."
+      correct_emission:
+        wbs_id_1: "E.T.SUB.CON.GCO.RCL"
+        element_name_1: "Reclamation"
+        wbs_id_2: "E.T.LIN.CON.GCO.CLR"  # renamed
+        element_name_2: "Clearing"
+      teaches: "ADR-09 — RCL = Reclamation (SUB); CLR = Clearing (LIN). Distinct codes for distinct concepts."
+
+  edge_cases:
+
+    A_EDGE_01:
+      label: "Multi-FERC genuine multi-account scenario"
+      scenario: "Control house contains both shell (352) and equipment (353). Emit at L6 or use SECONDARY?"
+      decision: "Decompose into discrete L6 rows by FERC account, not a single multi-FERC row. E.g., E.T.SUB.CON.CHS.SHL → 352 PRIMARY; E.T.SUB.CON.CHS.BAT → 353 PRIMARY. Use CONDITIONAL in WBS_FERC_Linkage ONLY when the SAME L6 item genuinely spans both (rare)."
+      teaches: "Prefer L6 decomposition over multi-FERC tags."
+
+    A_EDGE_02:
+      label: "T-LIN STC asymmetry (ADR-11)"
+      scenario: "STC is L5 in LIN but not in SUB. User adds an STC.UTC row to T-LIN."
+      decision: "Emit as E.T.LIN.CON.STC.UTC (STC is the expected/decided structure for LIN per ADR-11). Do NOT auto-create STC under SUB; flag for user if they request it."
+      teaches: "Symmetry is not forced; user-directed structural decisions are recorded as project-level conventions."
+
+    A_EDGE_03:
+      label: "Source conflict: T1 vs. T1 with different geography"
+      scenario: "Two FERC eLibrary docs disagree on FERC tag interpretation"
+      decision: "Emit BOTH rows in WBS_FERC_Linkage with applicability=PRIMARY and CONDITIONAL; populate decision_trace with conflict description; do not silently pick."
+      teaches: "Source_Catalog prioritization rule — emit both, never silently choose."
+
+# ============================================================
+# MODE B — CU Development (the matrix join)
+# ============================================================
+mode_b:
+
+  positive_examples:
+
+    B_POS_01:
+      label: "CU with full matrix join — pole install with explicit labor + permits"
+      scenario: "Install pole wood 45ft Class 4 by Digger Derrick at a T-LIN crossing of a state road"
+      cu_id: "CU-etx-0142"
+      wbs_a_link: "E.T.LIN.CON.OVH.POL"
+      canonical_phrase: "Install Pole Wood 45ft Class 4 by Digger Derrick"
+      uom: "EA"
+      labor_consumption:
+        - {cbs_class: "Foreman", count: 1, hours_per_uom: 6.5}
+        - {cbs_class: "Lineman_Journeyman", count: 2, hours_per_uom: 13.0}
+        - {cbs_class: "Groundman", count: 1, hours_per_uom: 6.5}
+        - {cbs_class: "CDL_Driver", count: 1, hours_per_uom: 6.5}
+      # Each cbs_class rolls up to WBS-B via Labor_Rates.labor_pool_link
+      # (Foreman, Lineman, Groundman → LBR.DIR.ELE; CDL_Driver → LBR.DIR.OPE)
+      equipment_list:
+        - {equipment_class: "Digger_Derrick", hours: 6}
+        - {equipment_class: "Pickup_Truck", hours: 6}
+      material_list:
+        - {material: "Pole Wood 45ft Class 4", qty: 1, uom: "EA"}
+        - {material: "Pole steps", qty: 8, uom: "EA"}
+      production_rate_value: 1.2
+      production_rate_basis: "EA per crew_day"
+      geography: "US_MID_ATLANTIC"
+      vintage_iso: "2026-03-15"
+      direct_labor_cost_per_uom: 520.00
+      direct_material_cost_per_uom: 380.00
+      direct_equipment_cost_per_uom: 240.00
+      direct_cost_per_uom: 1140.00
+      burden_eng_pct: 0.05
+      burden_pmg_pct: 0.03
+      burden_cmg_pct: 0.04
+      burden_env_pct: 0.01
+      burden_per_pct: 0.01
+      total_burden_pct: 0.14
+      loaded_cost_per_uom: 1299.60
+      permits_attached:
+        - {permit_id: "PRM-XNG-DOT-HOP", fee_amount: 250.00}
+      ferc_account_derived: "355"   # derived: wbs_a_link OVH.POL + T_LIN → WBS_FERC_Linkage PRIMARY = 355
+      confidence: HIGH
+      decision_trace: "Crew per RUS 1724E-153. Burden % per company AFE policy 2026 in Burden_Factors. DOT HOP permit attached; eligibility verified via Permit_Eligibility (PRM-XNG-DOT-HOP eligible for OVH.POL). FERC 355 derived from wbs_a_link OVH.POL in T_LIN context. Labor flows to WBS-B LBR.DIR.ELE and LBR.DIR.OPE via CBS rollup."
+      source_refs: "RUS_1724E_153,IBEW_Local_269_CBA_2026,company_AFE_policy_2026,PennDOT_HOP_2026"
+      teaches:
+        - "CU is the ONLY tab that joins multiple cost dimensions"
+        - "labor_consumption uses CBS classes; each rolls to WBS-B via Labor_Rates"
+        - "permits_attached must be validated against Permit_Eligibility"
+        - "ferc_account_derived is computed at query time from wbs_a_link → WBS_FERC_Linkage"
+
+    B_POS_02:
+      label: "Adder CU — Energized Work Per Location"
+      cu_id: "CU-edx-9001"
+      wbs_a_link: "E.D.LIN.CON.OVH.POL"
+      canonical_phrase: "Adder Energized Work Premium"
+      uom: "Per_Location"
+      production_rate_value: 1.0
+      production_rate_basis: "applied per location"
+      direct_labor_cost_per_uom: 600.00
+      direct_material_cost_per_uom: 0.00
+      direct_equipment_cost_per_uom: 0.00
+      direct_cost_per_uom: 600.00
+      total_burden_pct: 0.14
+      loaded_cost_per_uom: 684.00
+      ferc_account_derived: "364"
+      decision_trace: "Adder for energized-line work per IEEE 516. Always Per_Location UOM. Paired with a base CU; never stands alone. FERC inherits from wbs_a_link OVH.POL → 364 (D-LIN context)."
+
+    B_POS_03:
+      label: "CU at a railroad crossing — permit eligibility check"
+      scenario: "Install tower at a CSX crossing in PA. Tower height >200 ft (FAA triggered)."
+      cu_id: "CU-etx-0211"
+      wbs_a_link: "E.T.LIN.CON.OVH.TWR"
+      canonical_phrase: "Install Tower Steel Lattice 230 ft by Crawler Crane"
+      uom: "EA"
+      permits_attached:
+        - {permit_id: "PRM-XNG-RR", fee_amount: 12000.00}        # CSX wireline occupancy
+        - {permit_id: "PRM-XNG-FAA-7460", fee_amount: 0.00}      # FAA obstruction eval (no fee)
+        - {permit_id: "PRM-XNG-DOT-HOP", fee_amount: 250.00}    # Adjacent road crossing
+      ferc_account_derived: "354"
+      decision_trace: "Permit eligibility verified: PRM-XNG-RR eligible for OVH.TWR (Permit_Eligibility row exists); PRM-XNG-FAA-7460 eligible for OVH.TWR with CONDITIONAL trigger (height >200 ft, condition met); PRM-XNG-DOT-HOP eligible for OVH.TWR. FERC 354 derived (Towers and Fixtures, T-LIN). Same RR permit attached to a UGD.CDT crossing nearby would derive 357 instead of 354 — same permit, different FERC by asset (ADR-14)."
+      teaches:
+        - "Permits are validated against Permit_Eligibility before attachment"
+        - "Same permit gets different FERC at different assets (ADR-14 inheritance)"
+        - "CONDITIONAL eligibility requires the trigger condition to be documented in decision_trace"
+
+  negative_examples:
+
+    B_NEG_01:
+      label: "Replace at unit level (A_RULE_04 violation)"
+      bad:
+        canonical_phrase: "Replace Crossarm Wood 8ft"
+      why_bad: "Replace decomposes to Remove + Install. Each gets its own CU with its own crew, equipment, productivity."
+
+    B_NEG_02:
+      label: "Mob/demob inside a unit (A_RULE_05 violation)"
+      bad:
+        scope_description: "Set pole including mobilization and demobilization"
+      why_bad: "Mob/demob is a project-level WBS row at E.{T,D}.{SUB,LIN}.CON.GCO.MOB. Never embed in a per-asset CU."
+
+    B_NEG_03:
+      label: "No citation"
+      bad:
+        production_rate_value: 1.2
+        source_refs: null
+      why_bad: "Every CU requires ≥1 cited source. Confidence cannot exceed UNKNOWN without one."
+
+    B_NEG_04:
+      label: "Burden incoherence (G10 violation)"
+      bad:
+        direct_cost_per_uom: 1000.00
+        total_burden_pct: 0.14
+        loaded_cost_per_uom: 1100.00       # should be 1140
+      why_bad: "loaded_cost_per_uom ≠ direct_cost_per_uom × (1 + total_burden_pct). G10 fails."
+
+    B_NEG_05:
+      label: "Permit attached without eligibility (G11 violation — NEW v3)"
+      bad:
+        wbs_a_link: "E.T.SUB.CON.MEQ.TRF"
+        permits_attached:
+          - {permit_id: "PRM-XNG-RR", fee_amount: 12000.00}
+      why_bad: "PRM-XNG-RR (Railroad crossing) is NOT eligible for MEQ.TRF (transformer). The Permit_Eligibility tab has no row matching this combination. G11 fails."
+      teaches: "G11 — Permit-asset eligibility must be explicitly recorded in Permit_Eligibility before attachment at CU layer."
+
+    B_NEG_06:
+      label: "FERC stamped directly on CU instead of derived (A_RULE_13 violation)"
+      bad:
+        cu_id: "CU-etx-0042"
+        wbs_a_link: "E.T.LIN.CON.OVH.POL"
+        ferc_account_primary: "355"    # hard-coded
+      why_bad: "FERC is DERIVED from wbs_a_link → WBS_FERC_Linkage, not hard-coded on the CU. Hard-coding breaks the single-source-of-truth pattern and can drift from WBS_FERC_Linkage."
+      correct_action: "Use ferc_account_derived column (query-time computed) instead of stored ferc_account."
+      teaches: "A_RULE_13 — FERC mapping is in WBS_FERC_Linkage exclusively. CU reads it; doesn't store it."
+
+    B_NEG_07:
+      label: "Direct WBS-A → WBS-B reference (A_RULE_15 / G17 violation)"
+      bad:
+        registry_row:
+          wbs_id: "E.T.LIN.CON.OVH.POL"
+          consumed_by_labor_pool: "LBR.DIR.ELE"
+      why_bad: "WBS-A rows do NOT directly reference WBS-B rows. Cross-dimensional references only happen at the CU layer (Master_Cost_Units), per A_RULE_15."
+      correct_action: "Remove the direct reference. Express via a CU that links wbs_a_link=E.T.LIN.CON.OVH.POL and labor_consumption=[{cbs_class: Lineman_Journeyman, ...}]; the CBS class rolls up to LBR.DIR.ELE via Labor_Rates."
+      teaches: "A_RULE_15 / G17 — CU is the ONLY cross-dimension join point."
+
+  edge_cases:
+
+    B_EDGE_01:
+      label: "Break-point conflict — kVA factor says BREAK, voltage factor says GROUP"
+      scenario: "User defines crew the same way for a 25kVA and 50kVA transformer, same truck. Material cost differs."
+      decision: "GROUP. Material cost alone is a forbidden break_driver. Emit one CU with size-attribute filter on Master_Cost_Units."
+
+    B_EDGE_02:
+      label: "Stale vintage with no fresher source"
+      scenario: "Only available source is a 2019 prevailing wage rate (>60 months)"
+      decision: "Emit row with vintage_window=STALE; confidence forced to LOW per V6. Flag in Validation_Log; do not infer to MEDIUM/HIGH."
+
+    B_EDGE_03:
+      label: "T5-only source cannot exceed LOW"
+      scenario: "Production rate found only on Reddit r/lineman"
+      decision: "Emit row with confidence=LOW; flag for corroboration. Per V5, T5 alone cannot reach MEDIUM/HIGH."
+
+# ============================================================
+# MODE C — Permit Catalog Building (NEW in v3)
+# ============================================================
+mode_c:
+
+  positive_examples:
+
+    C_POS_01:
+      label: "Federal project-level permit (A1) — NO eligibility rows"
+      scenario: "Add USACE Section 404 Nationwide Permit verification to the catalog"
+      permits_row:
+        permit_id: "PRM-FED-USACE-404-NWP"
+        permit_name: "USACE §404 Clean Water Act Nationwide Permit Verification"
+        bucket: A1_FEDERAL
+        scope: PROJECT
+        issuing_authority_type: "Federal — USACE"
+        ferc_account_basis: INHERITS_FROM_ENABLED_ASSET
+        ferc_account_specific: null
+        cost_treatment: CAPITALIZED
+        authority_citation: "33 CFR Part 330"
+      permit_eligibility_rows:
+        # NONE — A1 bucket gets NO eligibility rows per ADR-06 (implicit project scope)
+      teaches: "ADR-06 / closed-world rule: A1/A2/A3 buckets have NO eligibility rows. Saves enumeration."
+
+    C_POS_02:
+      label: "Asset-specific permit (A4) — explicit eligibility rows"
+      scenario: "Add Railroad Crossing Occupancy permit catalog entry with full eligibility rows"
+      permits_row:
+        permit_id: "PRM-XNG-RR"
+        permit_name: "Railroad Crossing Occupancy"
+        bucket: A4_ASSET_CROSSING
+        scope: PER_CROSSING
+        issuing_authority_type: "Railroad — real estate group"
+        issuing_authority_examples: "Amtrak | CSX | NS | NJT | Metro-North | LIRR | MBTA"
+        typical_fee_usd_low: 5000
+        typical_fee_usd_high: 50000
+        fee_basis: "per crossing × per railroad"
+        ferc_account_basis: INHERITS_FROM_ENABLED_ASSET
+        ferc_account_specific: null
+      permit_eligibility_rows:
+        - {permit_id: "PRM-XNG-RR", wbs_a_code: "OVH.POL", granularity: L6_SPECIFIC, branch_context: ALL, applicability: ALWAYS}
+        - {permit_id: "PRM-XNG-RR", wbs_a_code: "OVH.TWR", granularity: L6_SPECIFIC, branch_context: ALL_T, applicability: ALWAYS}
+        - {permit_id: "PRM-XNG-RR", wbs_a_code: "UGD.CDT", granularity: L6_SPECIFIC, branch_context: ALL, applicability: ALWAYS}
+        - {permit_id: "PRM-XNG-RR", wbs_a_code: "UGD.CBL", granularity: L6_SPECIFIC, branch_context: ALL, applicability: ALWAYS}
+        - {permit_id: "PRM-XNG-RR", wbs_a_code: "UGD.MNH", granularity: L6_SPECIFIC, branch_context: ALL, applicability: ALWAYS}
+        - {permit_id: "PRM-XNG-RR", wbs_a_code: "FIB.OPG", granularity: L6_SPECIFIC, branch_context: ALL, applicability: ALWAYS}
+        - {permit_id: "PRM-XNG-RR", wbs_a_code: "FIB.ADS", granularity: L6_SPECIFIC, branch_context: ALL, applicability: ALWAYS}
+      teaches:
+        - "A4 bucket gets explicit eligibility rows enumerating every eligible WBS-A code"
+        - "Inherited FERC is derived at query time via Permit_Eligibility.wbs_a_code → WBS_FERC_Linkage (D3b — no stored ferc on eligibility row)"
+
+    C_POS_03:
+      label: "Activity-specific permit (A5) with CONDITIONAL trigger"
+      permits_row:
+        permit_id: "PRM-XNG-FAA-7460"
+        permit_name: "FAA Form 7460-1 Obstruction Evaluation"
+        bucket: A4_ASSET_CROSSING
+        scope: PER_SITE
+        issuing_authority_type: "Federal — FAA"
+        ferc_account_basis: INHERITS_FROM_ENABLED_ASSET
+        triggering_condition: "Structure height >200 ft AGL OR within FAA Part 77 surfaces near airport"
+      permit_eligibility_rows:
+        - {permit_id: "PRM-XNG-FAA-7460", wbs_a_code: "OVH.TWR", granularity: L6_SPECIFIC, branch_context: ALL_T, applicability: CONDITIONAL, condition: "Structure height >200 ft AGL OR within FAA Part 77 surfaces near airport"}
+      teaches: "FAA 7460 applies to towers only, AND only conditionally. Both restrictions captured."
+
+  negative_examples:
+
+    C_NEG_01:
+      label: "Comma-string eligibility list in Permits cell (P2 / DP-12 violation)"
+      bad:
+        permit_id: "PRM-XNG-RR"
+        eligible_assets: "OVH.POL, OVH.TWR, UGD.CDT, UGD.CBL, UGD.MNH"
+      why_bad: "Denormalized list in a cell breaks queryability and violates the normalized relational design principle (P2)."
+      correct_action: "Emit explicit Permit_Eligibility rows per the C_POS_02 pattern."
+      teaches: "DP-12 / catalog_vs_join_discipline."
+
+    C_NEG_02:
+      label: "Project-level permit with eligibility rows (ADR-06 violation)"
+      bad:
+        permit_id: "PRM-FED-NEPA-EIS"
+        bucket: A1_FEDERAL
+        permit_eligibility_rows:
+          - {permit_id: "PRM-FED-NEPA-EIS", wbs_a_code: "OVH.POL", ...}
+          - {permit_id: "PRM-FED-NEPA-EIS", wbs_a_code: "BGR.FDN", ...}
+          # ... 30+ more rows ...
+      why_bad: "A1 bucket permits use implicit project scope per ADR-06. Enumerating every WBS-A code bloats the eligibility table without adding information."
+      correct_action: "Emit only the Permits row; emit ZERO eligibility rows."
+      teaches: "ADR-06 — implicit scope for A1/A2/A3 buckets."
+
+# ============================================================
+# MODE D — FERC Linkage Building (NEW in v3)
+# ============================================================
+mode_d:
+
+  positive_examples:
+
+    D_POS_01:
+      label: "L5_WILDCARD with L6_SPECIFIC overrides — T-SUB BGR"
+      scenario: "Build WBS_FERC_Linkage entries for T-SUB.BGR with PRIMARY default and per-L6 overrides"
+      wbs_ferc_linkage_rows:
+        - {wbs_a_code: "BGR", granularity: L5_WILDCARD, branch_context: T_SUB, ferc_account_number: "352", applicability: PRIMARY, authority_citation: "EPI 8 (Structures and Improvements)", notes: "Default for structural foundations"}
+        - {wbs_a_code: "BGR.FDN", granularity: L6_SPECIFIC, branch_context: T_SUB, ferc_account_number: "352", applicability: PRIMARY, authority_citation: "EPI 8"}
+        - {wbs_a_code: "BGR.FDN", granularity: L6_SPECIFIC, branch_context: T_SUB, ferc_account_number: "353", applicability: CONDITIONAL, condition: "if equipment-specific foundation per FERC 353 Item 7"}
+        - {wbs_a_code: "BGR.MAT", granularity: L6_SPECIFIC, branch_context: T_SUB, ferc_account_number: "353", applicability: PRIMARY, authority_citation: "FERC 353 Item 7"}
+        - {wbs_a_code: "BGR.PAD", granularity: L6_SPECIFIC, branch_context: T_SUB, ferc_account_number: "353", applicability: PRIMARY, authority_citation: "FERC 353 Item 7 (equipment pad)"}
+        - {wbs_a_code: "BGR.GGD", granularity: L6_SPECIFIC, branch_context: T_SUB, ferc_account_number: "353", applicability: PRIMARY, authority_citation: "FERC 353 (Station Equipment)"}
+        - {wbs_a_code: "BGR.GRR", granularity: L6_SPECIFIC, branch_context: T_SUB, ferc_account_number: "353", applicability: PRIMARY, authority_citation: "FERC 353 (Station Equipment)"}
+        - {wbs_a_code: "BGR.OCT", granularity: L6_SPECIFIC, branch_context: T_SUB, ferc_account_number: "353", applicability: PRIMARY, authority_citation: "FERC 353 (oil containment is equipment-attached)"}
+      teaches:
+        - "L5_WILDCARD entry provides default; L6_SPECIFIC entries override"
+        - "Multiple entries per (wbs_a_code, branch_context) supported via applicability levels"
+        - "Lookup procedure (§9.1): L6 PRIMARY > L5 WILDCARD PRIMARY > ALL_T/ALL_D > raise G12"
+
+    D_POS_02:
+      label: "T-LIN routing — distinguishing tower from pole foundations"
+      wbs_ferc_linkage_rows:
+        - {wbs_a_code: "BGR.FDN", granularity: L6_SPECIFIC, branch_context: T_LIN, ferc_account_number: "354", applicability: PRIMARY, authority_citation: "FERC 354 Item 5 (tower foundation)", notes: "Default for T-Line structural foundation; assumes tower context"}
+        - {wbs_a_code: "BGR.FDN", granularity: L6_SPECIFIC, branch_context: T_LIN, ferc_account_number: "355", applicability: CONDITIONAL, condition: "if pole-specific setting per FERC 355 Item 13"}
+        - {wbs_a_code: "BGR.DEM", granularity: L6_SPECIFIC, branch_context: T_LIN, ferc_account_number: "355", applicability: PRIMARY, authority_citation: "FERC 355 Item 13 (pole setting)"}
+        - {wbs_a_code: "OVH.TWR", granularity: L6_SPECIFIC, branch_context: T_LIN, ferc_account_number: "354", applicability: PRIMARY, authority_citation: "FERC 354 (Towers and Fixtures)"}
+        - {wbs_a_code: "OVH.POL", granularity: L6_SPECIFIC, branch_context: T_LIN, ferc_account_number: "355", applicability: PRIMARY, authority_citation: "FERC 355 (Poles and Fixtures)"}
+      teaches: "Different L6 children of the same L5 can route to different FERC accounts"
+
+    D_POS_03:
+      label: "ACQ.LND routing — branch-context determines T vs D account"
+      wbs_ferc_linkage_rows:
+        - {wbs_a_code: "ACQ.LND.FEE", granularity: L6_SPECIFIC, branch_context: T_SUB, ferc_account_number: "350", applicability: PRIMARY, authority_citation: "EPI 7 (Land and Land Rights)"}
+        - {wbs_a_code: "ACQ.LND.FEE", granularity: L6_SPECIFIC, branch_context: D_SUB, ferc_account_number: "360", applicability: PRIMARY, authority_citation: "EPI 7"}
+        - {wbs_a_code: "ACQ.ROW.FEE", granularity: L6_SPECIFIC, branch_context: T_LIN, ferc_account_number: "350", applicability: PRIMARY, authority_citation: "EPI 7"}
+        - {wbs_a_code: "ACQ.ROW.FEE", granularity: L6_SPECIFIC, branch_context: D_LIN, ferc_account_number: "360", applicability: PRIMARY, authority_citation: "EPI 7"}
+      teaches: "branch_context disambiguates the same L5/L6 code across T vs D contexts"
+
+  negative_examples:
+
+    D_NEG_01:
+      label: "Cross-branch FERC contamination (G15 violation)"
+      bad:
+        wbs_a_code: "OVH.POL"
+        branch_context: "T_LIN"
+        ferc_account_number: "364"
+      why_bad: "364 is D-only (Poles, Towers and Fixtures — Distribution). T_LIN branch can only link to accounts with branch_applicability ∈ {T_ONLY, BOTH, INTANGIBLE_ONLY}."
+      correct_emission: "ferc_account_number: 355 (Poles and Fixtures — Transmission)"
+      teaches: "G15 — Branch-FERC consistency enforced at write-time on WBS_FERC_Linkage."
+
+    D_NEG_02:
+      label: "Missing PRIMARY for a Registry row (G12 violation)"
+      bad: "Registry has E.T.SUB.CON.STR.LMA but WBS_FERC_Linkage has no PRIMARY entry for STR.LMA in T_SUB"
+      why_bad: "G12 requires every Registry wbs_id to resolve to at least one PRIMARY entry in WBS_FERC_Linkage. Missing routing → workbook fails validation."
+      correct_action: "Emit a WBS_FERC_Linkage row for STR.LMA T_SUB PRIMARY 353 (Lightning/Static Mast → Station Equipment)."
+      teaches: "G12 — FERC routing exists for every WBS-A row."
+
+# ============================================================
+# MODE E — Validation & Audit (NEW in v3)
+# ============================================================
+mode_e:
+
+  positive_examples:
+
+    E_POS_01:
+      label: "Full gate sweep produces clean Validation_Log"
+      scenario: "Run Mode E on a candidate workbook before delivery"
+      validation_log_summary:
+        total_rows_audited: 854
+        gates_run: ["G1..G17", "V1..V9"]
+        gates_passed: 23978
+        gates_failed: 0
+        gates_warn: 12
+        warnings_summary:
+          - "12 rows flagged for vintage_window=RECENT confidence ceiling (V6 advisory, not blocking)"
+        verdict: "READY FOR DELIVERY"
+
+    E_POS_02:
+      label: "Cross-dimension violation detected"
+      scenario: "Registry row found referencing a WBS-B leaf directly"
+      validation_log_entry:
+        sheet_name: "Registry"
+        row_ref: "Registry!47"
+        gate_id: "G17"
+        result: "FAIL"
+        detail: "Row 47 (E.T.SUB.CON.MEQ.TRF) contains column 'labor_pool_link' referencing LBR.DIR.ELE. WBS-A rows cannot directly reference WBS-B rows."
+        resolution: "Remove the direct reference. Express labor consumption via a CU in Master_Cost_Units."
+
+  negative_examples:
+
+    E_NEG_01:
+      label: "Auditor attempts to invent values to make gates pass"
+      bad: "Auditor adds a stub PRIMARY row to WBS_FERC_Linkage with ferc_account_number=UNKNOWN to silence G12 failure"
+      why_bad: "UNKNOWN is a structured failure marker, not a substitute for missing data. G7 will catch UNKNOWN in a non-allowed field. G12 expects a real PRIMARY route."
+      correct_action: "Emit the G12 failure to Validation_Log; HOLD pending human resolution of the missing FERC routing."
+      teaches: "DP-04 vocabulary lock + DP-06 decision trace — auditing is read-only; never silently patch."
+
+# ============================================================
+# UNIVERSAL EXAMPLES
+# ============================================================
+universal:
+
+  out_of_scope_refusal:
+    user_request: "Build a CU library for our gas distribution main installs"
+    correct_response: |
+      mode: REFUSE
+      reason: OUT_OF_SCOPE
+      detail: "v3 of utility-cost-library-builder supports Electric T&D only.
+               Gas distribution is deferred to v4 of this skill (the matrix model
+               will extend to gas, water, telecom in a future major release)."
+      recovery_options:
+        - "Use a separate gas-domain skill (none exists yet)"
+        - "File a request to expand v4 scope to include gas distribution"
+
+  session_start_acknowledgment:
+    template: |
+      MODE: <A | B | C | D | E>
+      SCOPE: <which L1..L4 prefix(es) and/or WBS-B branches are in play>
+      ASSUMPTIONS: <any user-provided context distilled>
+      GATES: <enums.gates_active comma-list relevant to this mode>
+      Ready to proceed.
+
+  matrix_join_check:
+    template: |
+      For CU <cu_id>:
+        wbs_a_link: <code> → FERC: <derived from WBS_FERC_Linkage>
+        labor_consumption: <N CBS classes, each rolling to WBS-B leaf>
+        permits_attached: <M permits, each verified via Permit_Eligibility>
+        loaded_cost: <direct × (1 + total_burden_pct)>
+
+      Matrix coherence check: all four dimensions present? YES/NO
+      Cross-dimension references only via this CU? YES/NO
+      All eligibility checks passed? YES/NO

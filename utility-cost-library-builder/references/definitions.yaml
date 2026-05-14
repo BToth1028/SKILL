@@ -1,0 +1,673 @@
+schema_version: 4.0.0
+last_reviewed: 2026-05-14
+authority: "skill canonical — IS / IS-NOT glossary; resolves vocabulary disputes. Read alongside SKILL.md §17 ADR log."
+
+# ============================================================
+# SECTION 1 — CORE STRUCTURAL CONCEPTS
+# ============================================================
+
+matrix_cost_model:
+  is: >-
+    The v3 architectural foundation. Four orthogonal cost dimensions (physical
+    asset = WBS-A, labor pool = WBS-B, permit catalog, FERC USoA account)
+    joined only at the Construction Unit (CU) layer. Every cost dollar is
+    stamped with all four coordinates at CU consumption time. Roll up by
+    WBS-A → Form 1 federal reporting; roll up by WBS-B → labor-spend
+    tracking. Same dollars, multiple lenses.
+  is_not: >-
+    A single hierarchical WBS where every dimension nests under a single
+    root. Pre-v3 attempts to do this resulted in incoherent FERC tagging
+    (PDL rows trying to be both labor pools AND tangible costs AND have a
+    single FERC).
+  why_it_matters: >-
+    The four dimensions have orthogonal semantics. Forcing them into one
+    hierarchy creates either denormalized cells (lists in columns) or
+    contradictions (single FERC required for a row that spans many
+    destinations). The matrix model is the only structure that satisfies
+    both federal Form 1 accuracy and project-controls visibility.
+  enforcement: P1, P2, P5, A_RULE_11, A_RULE_15, G16, G17
+
+WBS_A:
+  is: >-
+    The physical-asset side of the matrix. Six-level hierarchy with dot-path
+    composite keys (E.T.SUB.CON.BGR.FDN). Every leaf row corresponds to a
+    discrete asset or tangible project cost. Tagged to FERC via the
+    WBS_FERC_Linkage tab (not via a direct column).
+  is_not: >-
+    The labor side. Labor pools live in WBS-B and never appear here.
+    Permits live in the Permits catalog and never appear here as rows.
+  why_it_matters: >-
+    WBS-A is the canonical "what was built" axis for federal Form 1
+    reporting. Mixing labor or permits into it forces incoherent FERC
+    tagging.
+  enforcement: A_RULE_11, A_RULE_12, A_RULE_13, P1, P4
+
+WBS_B:
+  is: >-
+    The labor-pool side of the matrix. Three-level hierarchy
+    (LBR.{DIR,IND}.{CIV,ELE,MEC,ENG,PMG,...}). Categorizes labor by
+    discipline. NEVER tagged with FERC — labor doesn't have a single
+    destination plant account because labor spans many assets. FERC routing
+    happens at the CU layer via wbs_a_link.
+  is_not: >-
+    A hierarchy of specific job classifications. Job-title granularity
+    (Lineman_Journeyman, Senior_Civil_Engineer) lives in CBS / Labor_Rates,
+    not WBS-B. Also not a fee-bearing structure — fees and tangibles live
+    in WBS-A.ACQ.
+  why_it_matters: >-
+    Direct labor (crews) and indirect labor (engineering, PM, CM) are both
+    labor and deserve consistent treatment. Pre-v3 forced indirect labor
+    into WBS-A as PDL rows which broke FERC tagging.
+  enforcement: A_RULE_11, P1, G16
+
+CBS:
+  is: >-
+    Cost Breakdown Structure. Captures pricing dimensions and specific
+    job/material/equipment classifications (Lineman_Journeyman wage rate,
+    1/0 ACSR conductor, Digger_Derrick equipment class). Lives in
+    Labor_Rates, Material_Indices, Productivity tabs.
+  is_not: >-
+    A column in WBS-A or WBS-B. CBS attributes never bleed into WBS labels
+    or canonical_phrase. They are filterable fields on Master_Cost_Units.
+  why_it_matters: >-
+    P3 determinism — same WBS row can have many CUs with many CBS values.
+  enforcement: A_RULE_01, G3
+
+construction_unit:
+  is: >-
+    The matrix-join atom. A CU describes work on exactly one WBS-A leaf,
+    consumes N CBS labor classes (each rolling up to a WBS-B leaf),
+    attaches M permits (with eligibility check), and inherits FERC from
+    WBS-A via WBS_FERC_Linkage. Each CU has full anatomy: crew, labor
+    hours per UOM, equipment, materials, production rate, vintage, ≥1
+    citation, burden buildup, loaded cost.
+  is_not: >-
+    A bid pay-item (which is a contract deliverable that typically
+    decomposes into ≥1 CU). Also not a placeholder for multiple
+    physically distinct assets.
+  why_it_matters: >-
+    CUs are the unit of cost-library reuse across projects. They are also
+    the ONLY place cross-dimensional references happen (per A_RULE_15).
+  enforcement: A_RULE_15, P5, G17
+
+# ============================================================
+# SECTION 2 — RELATIONAL DESIGN CONCEPTS (NEW in v3)
+# ============================================================
+
+entity_catalog_tab:
+  is: >-
+    A workbook tab holding one row per concept in a closed-world domain.
+    Examples: Registry (WBS-A entities), Permits (permit entities),
+    FERC_Accounts (FERC entities), Labor_Pools (WBS-B entities).
+  is_not: >-
+    A join tab (those hold M:N relationships, not entities). Also not a
+    denormalized list-in-a-cell.
+  why_it_matters: >-
+    P2 normalized design. Closed-world enumeration requires explicit
+    entities; you can't validate eligibility against a denormalized list.
+  enforcement: P2, DP-12
+
+join_tab:
+  is: >-
+    A workbook tab holding one row per relationship between two entity
+    tabs. Each row references both sides of the relationship via foreign
+    keys to the entity catalogs. Examples: Permit_Eligibility (permit ↔
+    WBS-A), WBS_FERC_Linkage (WBS-A ↔ FERC account), Labor_Eligibility
+    (labor pool ↔ WBS-A).
+  is_not: >-
+    A view computed at runtime. Join tabs are persisted rows that the
+    cost engine queries directly.
+  why_it_matters: >-
+    Many-to-many relationships are first-class data, not cell contents.
+    Explicit join rows are queryable, validatable, and auditable.
+  enforcement: A_RULE_14, P2, P6, G11, G14
+
+eligibility_constraint:
+  is: >-
+    An explicit row in a join tab declaring that an entity (permit, labor
+    type) can apply to a specific WBS-A code. The eligibility row carries
+    granularity (L5_WILDCARD or L6_SPECIFIC), applicability (PRIMARY,
+    SECONDARY, CONDITIONAL), and optionally a condition (free-text
+    qualifier for CONDITIONAL).
+  is_not: >-
+    An implicit "applies to all" assumption. Exception: project-level
+    permits (A1/A2/A3 buckets) have NO eligibility rows; that's a
+    documented closed-world rule (ADR-06).
+  why_it_matters: >-
+    Asset-specific permits typically apply only to a subset of WBS-A codes
+    (RR crossing → 7+ asset types; FAA 7460 → tower only). Encoding this
+    explicitly prevents mis-attribution at CU build time.
+  enforcement: A_RULE_14, P6, G11, G16
+
+L5_WILDCARD:
+  is: >-
+    An eligibility or linkage row whose wbs_a_code is an L5 code only
+    (e.g., "BGR", "OVH", "STC"). Applies to all L6 children of that L5
+    unless overridden by an L6_SPECIFIC row.
+  is_not: >-
+    A literal asterisk or NULL. The wbs_a_code field holds the actual L5
+    code string; granularity column = L5_WILDCARD distinguishes intent.
+  why_it_matters: >-
+    Compact representation of "applies to all L6 children of this L5
+    unless overridden." Reduces row count without losing precision.
+  enforcement: D2a (per ADR-13)
+
+L6_SPECIFIC:
+  is: >-
+    An eligibility or linkage row whose wbs_a_code is a full L5.L6 code
+    (e.g., "BGR.FDN", "OVH.TWR"). Overrides any L5_WILDCARD covering the
+    same code.
+  is_not: >-
+    A wildcard. Granularity column = L6_SPECIFIC, applies to exactly that
+    L6 leaf.
+  enforcement: D2a (per ADR-13)
+
+# ============================================================
+# SECTION 3 — WBS BRANCH AND BUCKET CONCEPTS
+# ============================================================
+
+BGR_Below_Grade:
+  is: >-
+    Structural foundations and grounding work below grade that SUPPORTS
+    above-grade assets. Includes: drilled pier foundations (FDN), direct-
+    embed pole settings (DEM), mat foundations (MAT), equipment pads
+    (PAD), ground grid (GGD), ground rods (GRR), oil containment vaults
+    (OCT).
+  is_not: >-
+    Underground utility infrastructure. CDT, CBL, DBR, HHD, MNH, RSR,
+    TRM, TRN are NOT BGR — they are UGD. The test: does this item
+    SUPPORT something above grade (BGR) or RUN below grade as part of the
+    electrical pathway (UGD)?
+  why_it_matters: >-
+    Pre-v3 combined these under "Below Grade" which mixed FERC routing
+    destinations (foundations → 352/353 or 354/355; UG utility →
+    357/358 or 366/367). Splitting them gives clean FERC mapping at L5.
+  enforcement: ADR-12
+
+UGD_Underground:
+  is: >-
+    Underground utility infrastructure — the electrical pathway running
+    below grade. Includes: power cable (CBL), conduit (CDT), direct-
+    buried cable (DBR), handhole (HHD), manhole (MNH), riser (RSR),
+    termination (TRM), cable trench (TRN).
+  is_not: >-
+    Structural foundation work. Foundations, pads, ground grids are BGR.
+    Edge case: riser (RSR) transitions UG-to-AG but lives in UGD because
+    the work is duct/cable transitioning out of the ground.
+  why_it_matters: >-
+    Maps cleanly to FERC 357/358 (T) or 366/367 (D). Matches how UG
+    ductbank contractors actually scope work.
+  enforcement: ADR-12
+
+GCO_General_Conditions:
+  is: >-
+    Project-wide INDIRECT cost categories. Includes: mobilization (MOB),
+    erosion & sediment controls (ESC), traffic control (TCO),
+    construction survey (SVY), temporary security (SCS), temporary
+    access (ACC), reclamation (RCL — SUB only), clearing (CLR — LIN
+    only), rock mitigation (ROC), groundwater/dewatering (GWT).
+  is_not: >-
+    Site conditions (physical site factors — those are STC). The test:
+    is this primarily a project overhead cost (GCO), or is it a physical
+    characteristic of the site that drives unit-cost premium (STC)?
+  why_it_matters: >-
+    Per AACE 56R / 17R, GCO is indirect/overhead; STC is site condition.
+    Confusing them leads to double-counting.
+
+STC_Site_Conditions:
+  is: >-
+    Physical site factors affecting specific work. Includes: existing
+    utility conflict (UTC), pavement restoration (PAV), surface
+    restoration (SRF), grading (GRD when site-condition-driven). Only
+    T-LIN and D-LIN have STC as an L5 (SUB sections fold site conditions
+    into the affected work).
+  is_not: General Conditions. STC is condition-driven, not overhead.
+  why_it_matters: Industry convention; AACE 56R alignment.
+  enforcement: ADR-11
+
+ACQ_Acquisitions:
+  is: >-
+    Acquisitions / Project Soft Costs — an L4 peer of CON under each L3
+    (E.T.SUB.ACQ, E.T.LIN.ACQ, E.D.SUB.ACQ, E.D.LIN.ACQ). Holds the
+    tangible third-party costs that aren't physical-asset rows and aren't
+    labor: land purchase, ROW easements, permit fees, application fees,
+    third-party studies, interconnection fees, testing fees. New in v3,
+    replaces the deprecated PDL branch's tangible-item portion.
+  is_not: >-
+    A labor branch (labor → WBS-B). Not a placeholder for indirect
+    overhead (that's burden percentages on CUs). Not FERC 303 by default
+    — ACQ rows have specific FERC destinations per EPI 3/7/8/9.
+  why_it_matters: >-
+    Tangible third-party costs need an estimating-view home for project
+    controls visibility AND a capitalization-view destination for federal
+    Form 1 accuracy. ACQ provides both: visible WBS-A line items that
+    roll into physical plant accounts via WBS_FERC_Linkage.
+  enforcement: ADR-12, P7
+
+PDL_deprecated:
+  is: >-
+    Project Delivery — the v1/v2 L4 branch that mixed labor pools,
+    tangible third-party costs, and design milestones in one structure.
+    DEPRECATED in v3.
+  is_not: >-
+    An active WBS branch in v3. Migration paths:
+    Labor LOE rows (ENG/PMG/CMG/ENV/PER/SIT/COM/LRA) → WBS-B;
+    Tangible fees and reports → ACQ branch;
+    Design milestones (D10/D30/D60/D90/IFC) → schedule, not WBS.
+  why_it_matters: >-
+    Pre-v3 incoherence: a single PDL row couldn't be FERC-tagged because
+    it contained costs that should go to many different FERC accounts.
+    See SKILL.md §12 and ADR-12 for full reasoning.
+  enforcement: A_RULE_11, A_RULE_13, ADR-12
+
+# ============================================================
+# SECTION 4 — PERMIT TAXONOMY (NEW in v3)
+# ============================================================
+
+permit_bucket_A1_Federal:
+  is: >-
+    Federal permits applied at the project level. Examples: NEPA (EIS/EA),
+    USACE §404 (Nationwide), USACE §10, USACE §408, USFWS §7 ESA, NHPA
+    §106, EPA NPDES CGP, FAA Form 7460 (if multiple sites), FERC §216,
+    Migratory Bird / Eagle take. Typically 3-8 per project.
+  is_not: Per-crossing or per-site permits (those are A4).
+  why_it_matters: >-
+    Project-level bucket → NO entries in Permit_Eligibility (implicit
+    project scope per ADR-06).
+
+permit_bucket_A2_State:
+  is: >-
+    State-level permits applied at the project level, one per state
+    crossed. Examples: NY Article VII, PA PUC §1102/1511, CT Siting
+    Council Certificate, MA EFSB, VT PUC §248, NH SEC §162-H, ME PUC
+    §3132, MD/DE PSC CPCN; state environmental (DEC/DEP/DEEP) wetlands,
+    stream protection, 401 WQC.
+  is_not: Per-crossing permits (A4).
+  why_it_matters: Implicit project scope; sole CPCN-class permits route to FERC 350 directly.
+
+permit_bucket_A3_Local:
+  is: >-
+    Local/municipal permits applied at the project level per affected
+    jurisdiction. Examples: building, electrical, demolition, zoning /
+    site plan, tree-removal, noise variance, fire-marshal review.
+  is_not: Per-crossing permits.
+  why_it_matters: Implicit scope. May be N rows for N municipalities crossed.
+
+permit_bucket_A4_Asset_Crossing:
+  is: >-
+    Permits issued per individual instance (per crossing, per site, per
+    structure). Examples: railroad crossing occupancy (Amtrak/CSX/NS/
+    NJT/Metro-North/LIRR/MBTA), state DOT highway occupancy permit,
+    USCG bridge/aerial-over-navigable, bridge attachment, FAA Form 7460,
+    pipeline crossing agreement, foreign utility crossing, state
+    geological/drilling, individual wetland Individual Permit, tidelands
+    lease.
+  is_not: >-
+    Project-wide permits (A1/A2/A3). The 4-test (single-application /
+    per-instance / counts-with-quantity / triggers-with-activity)
+    determines bucket assignment.
+  why_it_matters: >-
+    Explicit eligibility rows in Permit_Eligibility — each A4 permit
+    enumerates which WBS-A codes it can apply to.
+
+permit_bucket_A5_Activity:
+  is: >-
+    Permits issued per construction event/method. Examples: blasting,
+    open burn, dewatering, water withdrawal (HDD muds), hot work /
+    welding, oversize-overweight hauling, helicopter ops / TFR, 811
+    one-call, crane lift over road/RR.
+  is_not: Asset-specific permits (those are A4) or operating permits.
+  why_it_matters: >-
+    Triggered by construction method, not by asset count. Explicit
+    eligibility rows enumerate applicable methods/activities.
+
+four_test_for_bucket_classification:
+  is: >-
+    The deterministic algorithm to classify a permit into A1-A5. Apply
+    in order; first YES wins:
+    1. Single-application test (whole-project one docket) → A1/A2/A3
+    2. Per-instance issuance test (separate ID per crossing/site/event) → A4/A5
+    3. Counts-with-quantity test (cost scales linearly) → A4
+    4. Triggers-with-activity test (only when method is used) → A5
+  is_not: A judgment call. Deterministic by construction.
+  why_it_matters: Eliminates classification drift across analysts/projects.
+  enforcement: Mode C step C2
+
+# ============================================================
+# SECTION 5 — FERC ROUTING (NEW in v3)
+# ============================================================
+
+ferc_account_specific:
+  is: >-
+    Permit or row whose ferc_account_basis = SPECIFIC_ACCOUNT and whose
+    ferc_account_number is one specific FERC account. Examples: Article
+    VII Certificate → 350; ACQ.LND.FEE → 350 (T) or 360 (D).
+  is_not: Inherits-from-asset routing (that's INHERITS_FROM_ENABLED_ASSET).
+
+ferc_account_inheritance:
+  is: >-
+    Permits and CUs whose FERC is derived at query time from the WBS-A
+    asset they attach to. ferc_account_basis = INHERITS_FROM_ENABLED_ASSET.
+    Derivation procedure: lookup the permit's eligibility row for the
+    target WBS-A code, then join to WBS_FERC_Linkage for the PRIMARY FERC
+    of that code in the appropriate branch_context.
+  is_not: >-
+    Hard-coded on the permit row. Same permit (e.g., PRM-XNG-RR) gets
+    different FERCs depending on which asset it attaches to.
+  why_it_matters: >-
+    Permit fees naturally route to the FERC account of the asset they
+    enable. Hard-coding a single FERC on the permit row creates wrong
+    capitalization when the permit covers multiple asset types.
+  enforcement: ADR-14, §9.2
+
+ferc_303_misuse:
+  is_not: >-
+    A catch-all for items without a clear FERC home. Account 303 (per
+    18 CFR §367.3030) is reserved for genuinely separable intangible
+    property: patents, licenses, long-term franchises, organizational
+    costs.
+  is: >-
+    A narrow account for specific intangibles only. Routing soft costs
+    (permits, studies, interconnection fees) to 303 is incorrect; EPI
+    3/7/8/9 directs them into the physical plant account they enable.
+  why_it_matters: >-
+    The single most common drift failure mode for utility cost coders.
+    The pre-v3 hypothesis "if no FERC bucket, fold to 303" is inverted
+    relative to actual FERC practice.
+  enforcement: ADR-07, P4
+
+two_view_accounting:
+  is: >-
+    The accounting pattern in which soft costs (ROW, permits, studies,
+    interconnection fees) are VISIBLE WBS-A line items in the estimating
+    view (under ACQ branch) AND simultaneously roll into physical plant
+    accounts in the capitalization view (via WBS_FERC_Linkage). The
+    matrix model accommodates both views from the same data.
+  is_not: A choice between visibility OR booking. It's both.
+  why_it_matters: >-
+    Universal pattern across industry: ISO-NE PP-4 Att. D (10 estimating
+    categories), NYISO Manual 23 / OATT §30.8 (mandatory breakdown), MISO
+    MTEP25 (8 buckets), AACE RP 96R-18 (Class 5→1 estimating), Versant
+    Power Capitalization Guidelines (18 capitalizable components). All
+    expose estimating-view line items; all roll up to plant accounts at
+    booking.
+  enforcement: P7
+
+# ============================================================
+# SECTION 6 — CONSTRUCTION UNIT (CU) CONCEPTS
+# ============================================================
+
+burden_loading:
+  is: >-
+    The mechanism by which CU rates carry indirect/overhead costs.
+    loaded_cost = direct_cost × (1 + Σ burden_pct over applicable burden
+    categories). Burden categories defined in Burden_Factors sheet: ENG,
+    PMG, CMG, ENV, PER, SIT, IDC, CON. In v3, optional — explicit per-CU
+    labor consumption (via WBS-B and CBS) is preferred where allocable.
+  is_not: >-
+    A WBS line item. Burdens are CU-level attributes, not WBS rows.
+    Also: not a substitute for explicit labor consumption when labor can
+    be allocated per CU.
+  why_it_matters: >-
+    Burden loading still useful for indirect labor that genuinely can't
+    be allocated per-CU (project-level PM supervising hundreds of CUs).
+    When a CU is consumed by a project, burdens flow with the direct
+    cost into the same FERC plant account via the matrix join.
+  enforcement: G10
+
+break_point:
+  is: >-
+    The point at which work is meaningfully different — driven by primary
+    equipment change, crew size/composition change, or specialized
+    tools/techniques. ≥1 of these → BREAK into separate CUs.
+  is_not: >-
+    A material cost difference or labor cost difference. Material and
+    labor cost variation is not a break_point driver.
+  why_it_matters: Mode B pre-flight. Prevents overlapping CUs.
+  enforcement: B5
+
+canonical_phrase:
+  is: >-
+    Standardized scope phrase used in WBS row Element Name and CU phrase.
+    Pattern: [verb] [object] [material/type] [context/method]. Base verb
+    form (Install, not Installing). Example: "Set Pole Wood 45ft Class 4
+    by Digger Derrick".
+  is_not: A free-form description. No clauses, no parenthetical lists.
+  why_it_matters: A_RULE_07; enables dedup; resists drift.
+  enforcement: A_RULE_07, G6
+
+adder:
+  is: >-
+    A premium WBS L6 row that is always paired with a base scope row.
+    UOM must be Per_Location or Per_Job. Examples: Climb_Premium,
+    Energized_Work, Night_Work, Confined_Space, Weather_Standby.
+  is_not: >-
+    A regular L6 element. Adders represent a "this happened
+    additionally," not "this work was performed."
+  why_it_matters: A_RULE_08; clean separation of base vs. premium.
+
+# ============================================================
+# SECTION 7 — CONFIDENCE / SOURCE TIER (carried from v2)
+# ============================================================
+
+confidence_HIGH:
+  is: ≥1 T1 source OR ≥2 corroborating T2 sources, vintage CURRENT (≤24mo).
+  is_not: T5-only; STALE-vintage-with-conflicts.
+
+confidence_MEDIUM:
+  is: ≥1 T2 source OR ≥2 corroborating T3 sources, vintage CURRENT or RECENT.
+  is_not: T5-only.
+
+confidence_LOW:
+  is: T3/T4 only OR STALE vintage OR significant unresolved conflicts.
+  is_not: Fabricated. LOW is still cited.
+
+confidence_UNKNOWN:
+  is: No citable source found; emit row with UNKNOWN for affected fields.
+  is_not: Default. UNKNOWN is structured failure, not "blank".
+
+vintage_CURRENT:
+  is: ≤24 months as of access_date_iso.
+
+vintage_STALE:
+  is: ">60 months. Forces confidence ≤ LOW (V6 gate)."
+
+decision_trace:
+  is: >-
+    Required free-text reconstructable audit field on every emit row.
+    Should answer: "Why is this row what it is? What sources, what
+    decisions, what gates did it pass?"
+  is_not: Blank. UNKNOWN. Generic. A copy of the title.
+
+run_id:
+  is: ULID or UUIDv7 per workbook emission; immutable audit handle.
+
+normalization:
+  is: Deterministic conversion via enums.uom_conversions only.
+  is_not: Silent / inferred conversion. No conversion without an entry.
+
+novelty_validation:
+  is: 5-gate process applied to candidate CUs (Mode B). One FAIL = REJECT.
+  is_not: Subjective review.
+
+# ============================================================
+# v4 ADDITIONS (2026-05-14) — FERC Part 201, state overlay,
+# three-view accounting, Order 898
+# ============================================================
+
+# --- FERC Part-affiliation (ADR-16) ---
+
+ferc_part:
+  is: >-
+    The code-Part affiliation tag (PART_101 | PART_201) that every WBS_FERC_Linkage
+    row MUST carry. Disambiguates numerically-overlapping account numbers between
+    18 CFR Part 101 (Electric) and 18 CFR Part 201 (Gas). Account 365 means
+    "Overhead Conductors and Devices" in Part 101 and "Land and Land Rights —
+    gas transmission" in Part 201; the ferc_part tag is dispositive.
+  is_not: An optional informational field; required on every routing row.
+
+PART_101:
+  is: "18 CFR Part 101 — Uniform System of Accounts for Public Utilities and Licensees Subject to the Provisions of the Federal Power Act. Electric scope."
+  is_not: Applies to gas companies (use PART_201 for those).
+
+PART_201:
+  is: "18 CFR Part 201 — Uniform System of Accounts for Natural Gas Companies Subject to the Provisions of the Natural Gas Act. Gas scope. NEW v4 per ADR-16."
+  is_not: Applies to electric utilities (use PART_101 for those).
+
+natural_gas_company:
+  is: "An entity subject to FERC jurisdiction under the Natural Gas Act; files Form 2 (Major) or Form 2-A (Nonmajor). Bookkeeping per 18 CFR Part 201."
+  is_not: A retail-only local distribution company without FERC jurisdiction (those are state-regulated under their PUC, but typically adopt Part 201 by reference).
+
+gas_LDC:
+  is: "Gas local distribution company. Retail gas distribution operating under a state PUC tariff; in the Northeast, primary FERC scope is Part 201 distribution plant 374-387, especially 376 Mains."
+  is_not: An interstate pipeline (those file Form 2 directly under FERC jurisdiction).
+
+# --- Order No. 898 (2026 amendment) ---
+
+order_898:
+  is: >-
+    FERC final rule RM21-11, effective 2025-01-01. First material amendment to
+    18 CFR Part 101 since 2013. Added new accounts: 351 Energy Storage
+    Equipment — Transmission, 363 (relabeled) Energy Storage Equipment —
+    Distribution, 158.1-158.4 Environmental Credits (formerly REC accounting),
+    plus computer hardware / communication equipment sub-accounts under 391
+    and 397. NEW v4 in this skill per ADR-16.
+  is_not: A revision to Part 201 (it was an electric-side reform; Part 201
+    received only parallel computer/comms sub-account updates).
+
+environmental_credits_158_series:
+  is: >-
+    FERC accounts 158.1 (Allowance Inventory), 158.2 (Allowances Withheld),
+    158.3 (Environmental Credits — Renewable Energy), 158.4 (Environmental
+    Credits — Carbon / Emissions). Codified by Order 898 effective 2025-01-01.
+    Replaces ad-hoc REC accounting that was inconsistent across utilities pre-898.
+  is_not: A subset of intangible plant 301-303 (the 158 series sits on the
+    balance sheet as a current/long-term asset, not as utility plant).
+
+# --- State overlay (ADR-17) ---
+
+state_overlay:
+  is: >-
+    The 5th orthogonal dimension of the matrix cost model (added v4 per ADR-17).
+    Optional tag on Registry / WBS_FERC_Linkage / Estimate rows identifying which
+    state PUC's accounting overlay applies. NY_PSC is canonical for this skill;
+    NJ_BPU/PA_PUC/CT_PURA/MA_DPU/ME_PUC/VT_PUC/NH_PUC/RI_PUC are adjacent.
+    FEDERAL_ONLY = federal Form 1/Form 2 only, no state overlay.
+  is_not: A modification to federal FERC routing — the overlay adds DERIVED
+    bookings (revenue separation, regulatory asset deferral, settlement
+    reconciliation) but does NOT change the federal account assignment.
+
+NY_PSC:
+  is: "New York Public Service Commission. Operates under 16 NYCRR; adopted federal USoA by reference in 2015 (Case 14-M-0450, effective 2016-01-01) plus NY-specific schedules and overlays."
+  is_not: A federal regulatory authority (state-level, but state authority binds NY-jurisdictional utilities).
+
+ny_16_NYCRR:
+  is: >-
+    Title 16 of the New York Codes, Rules and Regulations. Chapter VI contains
+    NY PSC's Uniform System of Accounts for electric/gas/telephone/water
+    corporations. Part 167 (electric revenue accounts) and Part 312 (gas
+    revenue accounts) are the operative overlays this skill cares about.
+  is_not: A substitute for federal USoA (NY adopts federal text by reference
+    and adds NY-specific schedules on top).
+
+NY_RDM:
+  is: >-
+    NY Revenue Decoupling Mechanism. Tariff rider reconciling actual
+    delivery-revenue to authorized revenue requirement; under-collections
+    deferred and recovered in subsequent rate periods. Books to FERC 440
+    (residential) / 480 (gas residential) series plus regulatory asset/liability.
+  is_not: A rate-base reduction (RDM is a revenue-side reconciliation, not
+    a capitalization-side mechanism).
+
+NY_EAM:
+  is: >-
+    NY Earnings Adjustment Mechanism. Performance-incentive credits / debits
+    under REV proceedings; if utility hits a defined performance metric, EAM
+    awards a regulated-return adjustment. Books to deferred regulatory asset
+    / liability account; ultimate recovery on a future rate case basis.
+  is_not: An automatic ratemaking factor (each EAM credit/debit is order-driven
+    and case-specific).
+
+NY_REV:
+  is: >-
+    Reforming the Energy Vision. NY PSC proceedings starting 2014 directing
+    utilities to adopt distributed-system-platform business models, file
+    Distributed System Implementation Plans (DSIPs), and pursue performance-
+    based ratemaking. Cost recovery via deferred regulatory asset (booked under
+    state overlay; ultimately rolls into FERC 303 Misc Intangible Plant for
+    capitalized REV-program costs once committed).
+  is_not: A federal program (NY-specific PSC initiative).
+
+ESCO:
+  is: >-
+    Energy Service Company. Competitive retail supplier in NY (and other
+    deregulated states). Utility books delivery revenue (under 16 NYCRR
+    167.5/167.6 electric; 312.5/312.6 gas); ESCO books supply revenue. The
+    overlay separates these so capacity / energy supply revenues flow through
+    the ESCO without the utility recording them as revenue.
+  is_not: An affiliated company of the utility (typically third-party retail
+    suppliers; some utilities have affiliated competitive arms but those are
+    separately regulated).
+
+PGA:
+  is: >-
+    Purchased Gas Adjustment (also called Gas Cost Recovery / Gas Supply Charge
+    in some states). Tariff clause that passes through gas-commodity cost from
+    pipeline supplier to ratepayer. Reconciled annually. Books to FERC 805/806/812
+    gas-purchase accounts on the LDC side.
+  is_not: A profit margin (it is a cost-recovery pass-through; LDC earns no
+    return on the commodity portion).
+
+# --- Three-view accounting (ADR-18) ---
+
+accounting_view:
+  is: >-
+    The downstream-consumer tag on workbook rows identifying which of three
+    accounting views the row serves: ESTIMATING (Class 5→1 estimates),
+    CAPITALIZATION (in-service plant-account booking), SETTLEMENT (monthly
+    RTO/ISO + state-overlay reconciliation). NEW v4 per ADR-18.
+  is_not: A mutually-exclusive partition — same template data feeds all three
+    views; the tag identifies which view is consuming that specific row instance.
+
+settlement_view:
+  is: >-
+    Monthly accounting view that reconciles RTO/ISO settlement charges and
+    credits to FERC 456 (Other Electric Revenues, credits), 557 (Other
+    Expenses, charges), 565 (Transmission of Electricity by Others). Distinct
+    from CAPITALIZATION view (project-scoped, one-time at in-service) and
+    ESTIMATING view (forward-looking, project-scoped). NEW v4.
+  is_not: A subset of capitalization (it operates over operating periods, not
+    project life-cycle events).
+
+NYISO_settlement:
+  is: >-
+    Monthly settlement charges/credits from the New York ISO. NY utilities
+    receive an invoice/statement covering energy / capacity / ancillary /
+    transmission service amounts; these book to FERC 456 (credits), 557
+    (charges), 565 (transmission service). Per DR-F06 the exact account
+    mapping is single-source-cited in this skill — verify against current FERC
+    Office of Enforcement guidance before relying in production close.
+  is_not: A FERC-jurisdictional cost-of-service rate (NYISO settlement runs
+    monthly against a tariff that is approved by FERC, but the booking is
+    operational not ratemaking).
+
+ISO_NE_settlement:
+  is: >-
+    Monthly settlement charges/credits from ISO New England. Same booking
+    pattern as NYISO. Applies to MA, CT, RI, VT, ME, NH utilities. Per DR-F06
+    flagged low-corroboration — verify against current FERC AI01-1-000.
+  is_not: PJM settlement (PJM = NJ, PA in the Northeast scope).
+
+# --- Cross-references to canonical FERC research ---
+
+ferc_research_brief:
+  is: 'Canonical FERC accounting research output from session 2026-05-14; located at C:\dev\40-49-ai-agents-and-prompts\47-outputs-and-artifacts\47.01-generated-docs\ferc-accounting-brief-019e25c1e2f2.md; UUIDv7 019e25c1-e2f2-7fa0-9b4b-bb3d2c37bacf'
+  is_not: A duplicate or summary — it is the source-of-truth synthesis this skill draws on.
+
+ferc_electric_verification:
+  is: "Verification report confirming all 14 v3 electric FERC accounts (303, 350, 352-358, 364-368) against current 18 CFR Part 101; located at ferc-accounting-electric-verification-019e25c1e3bb.md"
+  is_not: A speculative cross-check — all 14 accounts independently confirmed against current eCFR text.
+
+ferc_gas_universe:
+  is: "Comprehensive 18 CFR Part 201 gas account enumeration (87 accounts) ready for gas WBS authoring; located at ferc-accounting-gas-universe-019e25c1e483.md"
+  is_not: Production-ready (intangibles and general plant accounts overlap Part 101 numerically; ferc_part tag is required to disambiguate).
