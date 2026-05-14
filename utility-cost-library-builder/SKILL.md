@@ -1,15 +1,21 @@
 ---
 name: utility-cost-library-builder
 description: >-
-  Deterministic builder for Electric Utility (T&D) cost libraries using a normalized
-  matrix cost model. Produces an audit-ready Excel workbook with ten relational tabs
-  expressing four orthogonal cost dimensions: physical assets (WBS-A, FERC-tagged),
-  labor pools (WBS-B), permit catalog, and FERC USoA catalog — joined via the
-  Construction Unit (CU) layer. Every L6 row, every CU, every permit assignment
-  traces to 18 CFR Part 101 (FERC USoA) for federal Form 1 reporting accuracy.
-  Use when authoring WBS rows, defining CUs, applying burden loading, building the
-  permit catalog, mapping WBS to FERC, or assembling the audit-ready Master Cost
-  Library workbook for Northeast US Electric T&D capital projects.
+  Deterministic builder for Electric and Gas Utility (T&D) cost libraries using a
+  normalized matrix cost model. Delivers seventeen logical surfaces (ADR-19 split
+  storage): thirteen `.xlsx` workbook tabs plus four YAML-canonical files under
+  `references/` (`ferc_accounts.yaml`, `wbs_ferc_linkage.yaml`, `permits.yaml`,
+  `permit_eligibility.yaml`) whose matching workbook tabs are derived views only.
+  Five orthogonal cost dimensions: physical assets (WBS-A, FERC-tagged), labor pools
+  (WBS-B), permit catalog, FERC USoA catalog
+  (with ferc_part ∈ {PART_101, PART_201} affiliation), and state_overlay
+  (NY_PSC canonical + 8 adjacent NE state PUCs) — joined via the Construction Unit
+  (CU) layer. Every L6 row, every CU, every permit assignment traces to 18 CFR
+  Part 101 (Electric USoA) or 18 CFR Part 201 (Gas USoA) for federal Form 1 / Form 2
+  reporting accuracy, with NY 16 NYCRR state-overlay handling for NY PSC-regulated
+  utilities. Use when authoring WBS rows, defining CUs, applying burden loading,
+  building the permit catalog, mapping WBS to FERC, or assembling the audit-ready
+  Master Cost Library workbook for Northeast US Electric and Gas T&D capital projects.
 
   Triggers on: "build a CU", "add WBS row", "what FERC account", "burden rate",
   "T&D unit cost", "substation construction unit", "line construction unit",
@@ -22,7 +28,7 @@ version: 4.0.0
 status: active
 schema: 4.0
 last_revised: 2026-05-14
-revision_reason: "v4 architectural expansion: 18 CFR Part 201 (Gas) activation; Order No. 898 (effective 2025-01-01) account corrections (351, 363, 158, 359.1, 372); state_overlay 5th matrix dimension; three-view accounting (estimating + capitalization + SETTLEMENT) for NYISO / ISO-NE / PJM monthly reconciliation; NY PSC 16 NYCRR overlay; cross-references to ferc-accounting-* canonical research at 47.01-generated-docs and 47.04-ontology-decision-traces."
+revision_reason: "v4 architectural expansion: 18 CFR Part 201 (Gas) activation; Order No. 898 (effective 2025-01-01) account corrections (351, 363, 158, 359.1, 372); state_overlay 5th matrix dimension; three-view accounting (estimating + capitalization + SETTLEMENT) for NYISO / ISO-NE / PJM monthly reconciliation; NY PSC 16 NYCRR overlay; cross-references to ferc-accounting-* canonical research at 47.01-generated-docs and 47.04-ontology-decision-traces. ADR-19 (v4.1 data layer): FERC_Accounts, WBS_FERC_Linkage, Permits, and Permit_Eligibility are YAML-canonical; workbook_schema `sheets` holds 13 xlsx tabs; derived review workbook emitted via build_review_v2.py (or successor)."
 related_skills:
   - wbs-cu-builder           # internal validator for electric utility WBS dictionary
   - deterministic-prompt-builder  # source of P1-P8 principles and DP-01..DP-10
@@ -33,6 +39,11 @@ authority:
     - references/definitions.yaml
     - references/workbook_schema.yaml
     - references/source_catalog.yaml
+    - references/examples.yaml
+    - references/ferc_accounts.yaml       # YAML-canonical per ADR-19
+    - references/wbs_ferc_linkage.yaml  # YAML-canonical per ADR-19
+    - references/permits.yaml            # YAML-canonical per ADR-19
+    - references/permit_eligibility.yaml # YAML-canonical per ADR-19
     - 18 CFR Part 101                  # FERC Uniform System of Accounts (Electric — Federal Power Act)
     - 18 CFR Part 201                  # FERC Uniform System of Accounts (Natural Gas — Natural Gas Act) — NEW v4 per ADR-16
     - 18 CFR §367.3030                 # Service Company USoA (Account 303 parallel)
@@ -52,7 +63,7 @@ authority:
     - NESC (IEEE C2)                   # National Electrical Safety Code
     - IEEE C57.13 / C37.30 / 738 / 605 # equipment standards (terminology lock)
   derived:
-    - workbook content (.xlsx)
+    - workbook content (.xlsx) — tabs mirroring `external_files` are regenerated views; not authoritative vs YAML
     - all citations and decision traces
   conflict_precedence:
     - user turn instruction
@@ -60,6 +71,10 @@ authority:
     - FERC Order No. 898 effective-date amendments
     - 16 NYCRR Chapter VI (when state_overlay = NY_PSC)
     - references/workbook_schema.yaml
+    - references/ferc_accounts.yaml
+    - references/wbs_ferc_linkage.yaml
+    - references/permits.yaml
+    - references/permit_eligibility.yaml
     - references/enums.yaml
     - references/source_catalog.yaml
     - ISO-NE PP-4 Attachment D / NYISO Manual 23 / PJM / MISO MTEP / AACE 96R-18
@@ -73,20 +88,20 @@ authority:
     - "C:\\dev\\40-49-ai-agents-and-prompts\\47-outputs-and-artifacts\\47.04-ontology-decision-traces\\ferc-accounting-provenance-manifest-019e25c1e22a.yaml"
 ---
 
-# Utility Cost Library Builder v3 — Electric T&D Matrix Cost Model
+# Utility Cost Library Builder v4 — Electric and Gas T&D Matrix Cost Model
 
-> Version 3.0.0 — major architectural restructure. Read §17 (Resolved Architectural Decisions) and §18 (Changelog) to understand what changed from v2 and why.
+> Version 4.0.0 — Gas activation, state_overlay 5th dimension, three-view accounting, Order 898 currency, ADR-19 split storage (four YAML-canonical surfaces). Read §17 (Resolved Architectural Decisions, especially ADR-16 through ADR-19) and §18 (Changelog) to understand what changed from v3 and why.
 
 ---
 
 ## 1. Session Mission
 
-Build an audit-ready Utility (Electric T&D + **Gas T&D as of v4**) cost library using a normalized matrix accounting model. Every cost dollar is stamped with **five orthogonal coordinates** — physical asset (WBS-A), labor pool (WBS-B), permit constraints, FERC USoA account (with `ferc_part` ∈ {PART_101, PART_201}), and **state_overlay** (NY_PSC canonical; 8 adjacent NE state commissions; FEDERAL_ONLY default) — joined through the Construction Unit (CU) layer. The output is a single ten-tab Excel workbook in which:
+Build an audit-ready Utility (Electric T&D + Gas T&D) cost library using a normalized matrix accounting model. Every cost dollar is stamped with **five orthogonal coordinates** — physical asset (WBS-A), labor pool (WBS-B), permit constraints, FERC USoA account (with `ferc_part` ∈ {PART_101, PART_201}), and **state_overlay** (NY_PSC canonical; 8 adjacent NE state commissions; FEDERAL_ONLY default) — joined through the Construction Unit (CU) layer. The output is **split storage** (per ADR-19): **13** `.xlsx` tabs in the workbook schema (interactive authoring, rate libraries, audit artifacts) + **4** YAML-canonical files (`references/ferc_accounts.yaml`, `references/wbs_ferc_linkage.yaml`, `references/permits.yaml`, `references/permit_eligibility.yaml`) declared under `workbook_schema.yaml :: external_files`, **17 logical surfaces** total. Workbook tabs that mirror those four YAMLs are **derived views**—regenerate on demand (e.g. `build_review_v2.py`); edit the YAML, not the derived cells. The output (regardless of storage) holds:
 
 - Every WBS-A leaf row carries a single primary FERC account (via a normalized join table, not a direct column).
 - Every labor pool row lives in a separate WBS-B structure and carries **no** FERC tag.
 - Every permit type lives in a separate catalog with explicit eligibility constraints describing which WBS-A asset types it can apply to.
-- Every CU joins these four dimensions and computes both direct cost and burden-loaded total cost, with the loaded cost flowing to the destination FERC account via the matrix join.
+- Every CU joins these five dimensions and computes both direct cost and burden-loaded total cost, with the loaded cost flowing to the destination FERC account via the matrix join.
 - Every row traces to a cited authoritative source under the T1–T5 tier model.
 
 The system is designed for **federal Form 1 reporting accuracy first**, project-controls visibility second, and AACE Class 5→Class 1 estimating fidelity third — in that order of precedence.
@@ -150,7 +165,7 @@ The matrix model gives you both views from the same data: the WBS-A row provides
 
 ## 3. Architectural Principles
 
-These eight principles are load-bearing. Every other rule in this skill flows from them. Violations are caught by validation gates G1–G15.
+These eight principles are load-bearing. Every other rule in this skill flows from them. Violations are caught by validation gates G1–G19.
 
 | # | Principle | Enforcement |
 |---|---|---|
@@ -218,30 +233,38 @@ This makes the skill thinner (it owns procedures and gates) and the workbook ric
 
 If a FERC account, WBS code, permit ID, or labor classification does not appear in the closed-world enums and the user has not explicitly approved its addition, the system MUST HOLD and ask **exactly one** clarifying question or emit a structured error. Inventing values silently is the most common drift failure mode for cost-WBS systems.
 
-## 6. Workbook Output Contract — Ten Tabs
+## 6. Output Contract — Split Storage (13 xlsx tabs + 4 YAML-canonical files)
 
-### 6.1 Tab inventory (canonical order)
+### 6.1 Surface inventory (canonical order)
+
+**xlsx tabs** — interactive authoring (Registry, Master_Cost_Units), per-run audit artifacts (Run_Manifest, Validation_Log), and reference / rate-library tabs that benefit from spreadsheet review:
 
 | # | Tab | Type | Primary Key | Purpose |
 |---|---|---|---|---|
 | 1 | `Run_Manifest` | Audit envelope | run_id | One row per workbook emission; run metadata + gate summary |
 | 2 | `Registry` | Entity (WBS-A) | wbs_id | Physical assets + tangible project costs (ACQ). **No FERC column.** |
-| 3 | `Permits` | Entity (catalog) | permit_id | Canonical permit-type catalog (federal/state/local/asset/activity) |
-| 4 | `Permit_Eligibility` | Join (M:N) | linkage_id | Permit ↔ WBS-A asset eligibility |
-| 5 | `FERC_Accounts` | Entity (catalog) | account_number | 18 CFR Part 101 verbatim account definitions |
-| 6 | `WBS_FERC_Linkage` | Join (M:N) | linkage_id | WBS-A → FERC account routing (PRIMARY + CONDITIONAL alternatives) |
-| 7 | `Labor_Pools` | Entity (WBS-B) | labor_pool_id | Labor type catalog (Direct/Indirect by discipline) |
-| 8 | `Labor_Eligibility` | Join (M:N) | linkage_id | Labor pool ↔ WBS-A asset eligibility (where labor types are constrained) |
-| 9 | `Master_Cost_Units` | Join (matrix CU layer) | cu_id | The matrix join: CU → WBS-A leaf + labor consumption + permit attachment |
-| 10 | `Burden_Factors` | Rate library | burden_id | Burden percentages (ENG/PMG/CMG/ENV/PER/SIT/IDC) per branch |
-| 11 | `Labor_Rates` | Rate library | rate_id | CBS-level specific job classifications with wage rates |
-| 12 | `Material_Indices` | Rate library | index_id | Commodity indices (ENR CCI, BLS PPI, LME, etc.) for normalization |
-| 13 | `Productivity` | Reference | prod_id | Production rates per CU/crew/geography |
-| 14 | `Source_Catalog` | Reference | source_id | Every cited source (T1–T5) with tier, vintage, license |
-| 15 | `Model_Equations` | Reference | equation_id | Parametric models used for derivation |
-| 16 | `Validation_Log` | Audit | row_ref | Every gate result (PASS/FAIL/WARN) with detail |
+| 3 | `Labor_Pools` | Entity (WBS-B) | labor_pool_id | Labor type catalog (Direct/Indirect by discipline) |
+| 4 | `Labor_Eligibility` | Join (M:N) | linkage_id | Labor pool ↔ WBS-A asset eligibility (where labor types are constrained) |
+| 5 | `Master_Cost_Units` | Join (matrix CU layer) | cu_id | The matrix join: CU → WBS-A leaf + labor consumption + permit attachment |
+| 6 | `Burden_Factors` | Rate library | burden_id | Burden percentages (ENG/PMG/CMG/ENV/PER/SIT/IDC) per branch |
+| 7 | `State_Overlay_Mapping` | Join (M:N) | overlay_link_id | (NEW v4 per ADR-17) FERC account ↔ state-overlay rules (NY PSC RDM/EAM/REV/ESCO and adjacent NE state PUCs) |
+| 8 | `Labor_Rates` | Rate library | rate_id | CBS-level specific job classifications with wage rates |
+| 9 | `Material_Indices` | Rate library | index_id | Commodity indices (ENR CCI, BLS PPI, LME, etc.) for normalization |
+| 10 | `Productivity` | Reference | prod_id | Production rates per CU/crew/geography |
+| 11 | `Source_Catalog` | Reference | source_id | Every cited source (T1–T5) with tier, vintage, license |
+| 12 | `Model_Equations` | Reference | equation_id | Parametric models used for derivation |
+| 13 | `Validation_Log` | Audit | row_ref | Every gate result (PASS/FAIL/WARN) with detail |
 
-> **Note on tab count**: The numbered list above shows 16 tabs total; the original "Ten Tabs" header refers to the core entity + join + CU tabs (1–9). The remaining tabs (10–16) are supporting reference tables and audit artifacts that were present in v2 and remain unchanged.
+**External YAML files** (NEW v4.1 per ADR-19) — canonical storage for pure-reference catalog + join data that benefits from git-friendly diffs, scriptable parsing, and alignment with the skill's YAML-first authority chain. xlsx representations are derived views regenerated on demand from these YAMLs:
+
+| File | Type | Primary Key | Path |
+|---|---|---|---|
+| `Permits` | Entity (catalog) | permit_id | `references/permits.yaml` |
+| `Permit_Eligibility` | Join (M:N) | linkage_id | `references/permit_eligibility.yaml` |
+| `FERC_Accounts` | Entity (catalog) | (ferc_part, account_number) | `references/ferc_accounts.yaml` |
+| `WBS_FERC_Linkage` | Join (M:N) | linkage_id | `references/wbs_ferc_linkage.yaml` |
+
+> **Note on count**: **13** `sheets:` tabs + **4** `external_files:` YAML authorities = **17** logical surfaces total. `FERC_Accounts`, `WBS_FERC_Linkage`, `Permits`, and `Permit_Eligibility` are YAML-canonical (per ADR-19); their xlsx mirror tabs are derived only. Future YAML migration **candidates** (not yet moved): `Labor_Pools`, `Labor_Eligibility`, `State_Overlay_Mapping`, and rate-library tabs (`Burden_Factors`, `Labor_Rates`, `Material_Indices`, `Productivity`). ADR-19 (§17) records rationale and the migration pattern.
 
 ### 6.2 Tab purposes — the three classes of tab
 
@@ -287,10 +310,10 @@ ELSE
 
 ### 7.1 Mode A — WBS Development
 
-Used for authoring both WBS-A (physical assets) and WBS-B (labor pools). Sub-mode is detected from the L1 prefix of the target rows: `E.T.*` or `E.D.*` → WBS-A; `LBR.*` → WBS-B.
+Used for authoring both WBS-A (physical assets) and WBS-B (labor pools). Sub-mode is detected from the L1 prefix of the target rows: `E.T.*` or `E.D.*` → WBS-A (Electric, Part 101); `G.T.*` or `G.D.*` → WBS-A (Gas, Part 201); `LBR.*` → WBS-B (domain-agnostic).
 
 **Algorithm A1–A6:**
-- A1. Resolve domain (Electric T&D only in v3; refuse other domains with `OUT_OF_SCOPE`).
+- A1. Resolve domain (Electric T&D and Gas T&D supported in v4; refuse water, telecom, and electric generation with `OUT_OF_SCOPE`).
 - A2. Load canonical: enums.yaml, definitions.yaml, FERC USoA reference.
 - A3. Research pass (T1 → T5 corroboration; ≥1 T2+ source for HIGH confidence).
 - A4. Structure pass — for each row emit: `wbs_id` (dot-path), L1–L6 codes, element_name, canonical_phrase, definition, scope_inclusions, scope_exclusions, assumptions, utility_domain, is_overhead, source_refs, confidence, license, status, vintage_iso, vintage_window, decision_trace. **No FERC column.**
@@ -309,7 +332,7 @@ This is the heaviest mode. CUs are where every cost dimension converges.
 - B5. **Break-point pre-flight** (Mode B-specific): does primary equipment change? Does crew size/composition change? Does specialized tools/techniques change? ≥1 YES → BREAK; all NO → GROUP. Material cost alone is NEVER a break driver.
 - B6. **Normalization** — convert UOM via enums.uom_conversions; normalize geography; reconcile vintage.
 - B7. **Burden loading** — compute `loaded_cost_per_uom = direct_cost × (1 + Σ burden_pct)`. Burdens applied per Burden_Factors: ENG, PMG, CMG, ENV, PER, SIT, IDC. Burdens INHERIT the CU's FERC via wbs_a_link → WBS_FERC_Linkage.
-- B8. **Validation gates G1–G15** (full gate set). Emit.
+- B8. **Validation gates G1–G19** (full gate set; G18 fires on CUs carrying a state_overlay tag; G19 fires on CUs with accounting_view = SETTLEMENT). Emit.
 
 **Mode B Novelty Validation (5 gates, one FAIL = REJECT):**
 - G_NOV_1: scope (real scope gap, not duplicate of existing CU)
@@ -318,7 +341,7 @@ This is the heaviest mode. CUs are where every cost dimension converges.
 - G_NOV_4: unit integrity (UOM consistent; no mixing LF and EA in one CU)
 - G_NOV_5: anti-drift (cu_id doesn't recycle a retired ID; no inventing labor classes)
 
-### 7.3 Mode C — Permit Catalog Building (NEW in v3)
+### 7.3 Mode C — Permit Catalog Building
 
 Used to populate or extend the `Permits` and `Permit_Eligibility` tabs.
 
@@ -330,7 +353,7 @@ Used to populate or extend the `Permits` and `Permit_Eligibility` tabs.
 - C5. Set `ferc_account_basis`: SPECIFIC_ACCOUNT (with account_number) | INHERITS_FROM_ENABLED_ASSET | ACCOUNT_183_TRANSFERS | FERC_303_INTANGIBLE.
 - C6. Validation gates G1, G2, G7, G8, G11, G14, G15. Emit.
 
-### 7.4 Mode D — FERC Linkage Building (NEW in v3)
+### 7.4 Mode D — FERC Linkage Building
 
 Used to populate or extend the `FERC_Accounts` and `WBS_FERC_Linkage` tabs.
 
@@ -340,15 +363,15 @@ Used to populate or extend the `FERC_Accounts` and `WBS_FERC_Linkage` tabs.
 - D3. Identify any CONDITIONAL alternatives (e.g., a foundation could be 352 if building-related or 353 if equipment-specific).
 - D4. Emit linkage rows: one PRIMARY entry per (wbs_a_code, branch_context); zero or more CONDITIONAL entries.
 - D5. For L5 wildcards: emit a single row covering the wildcard plus explicit L6 override rows for exceptions.
-- D6. Validation gates G7, G8, G12, G13, G14, G15. Emit.
+- D6. Validation gates G7, G8, G12, G13, G14, G15, G18 (if emitting State_Overlay_Mapping rows). Emit.
 
-### 7.5 Mode E — Validation & Audit (NEW in v3)
+### 7.5 Mode E — Validation & Audit
 
 Pure read-only mode: run the full validation pipeline on an existing workbook and emit `Validation_Log` with PASS/FAIL/WARN per row per gate.
 
 **Algorithm E1–E4:**
 - E1. Load workbook; verify schema conformance per workbook_schema.yaml.
-- E2. Run gates G1–G16 + V1–V9 across every tab.
+- E2. Run gates G1–G19 + V1–V9 across every tab.
 - E3. Run referential-integrity checks across all join tabs.
 - E4. Emit Validation_Log with one row per (sheet, row, gate, result) tuple.
 
@@ -392,11 +415,14 @@ INPUT: wbs_id (full dot-path)
    - L6_code        = parts[5] if depth >= 6 else None
    - leaf_code      = parts[-1]
 2. Determine ferc_part from L1_root: E -> PART_101; G -> PART_201; UNKNOWN -> hold.
-3. Search WBS_FERC_Linkage in order (filtered by ferc_part):
+3. Load the WBS_FERC_Linkage data (canonical YAML at references/wbs_ferc_linkage.yaml
+   per ADR-19; OR the derived xlsx tab if working against an emitted workbook).
+   Search in order (filtered by ferc_part):
    (a) L6_SPECIFIC + branch_context + applicability=PRIMARY + ferc_part match
    (b) L5_WILDCARD + branch_context + applicability=PRIMARY + ferc_part match
    (c) L5_WILDCARD + branch_context=ALL + applicability=PRIMARY + ferc_part match
-4. If a match: RETURN (ferc_part, account_number).
+4. If a match: RETURN (ferc_part, account_number). Optionally verify the account
+   exists in references/ferc_accounts.yaml as a composite-FK integrity check (G13).
 5. If no match: emit G12 (FERC routing missing) error; HOLD pending user input.
 6. CONDITIONAL entries are surfaced as alternatives but do NOT become the PRIMARY return value.
 7. If row has non-null state_overlay and ferc_account_basis = INHERITS_FROM_STATE_OVERLAY,
@@ -594,7 +620,7 @@ FERC 18 CFR Part 101, Electric Plant Instructions 3, 7, 8, and 9, do NOT create 
 
 This was a research finding from §17 ADR-07. The user's pre-v3 hypothesis ("if no FERC bucket exists, fold into 303") was inverted relative to actual FERC practice. Industry-standard frameworks (ISO-NE PP-4 Att. D, MISO MTEP25, AACE 96R-18, Versant Power's capitalization guidelines) all maintain itemized estimating-view rows that roll into physical plant accounts at booking — exactly the "two-view accounting" pattern in P7.
 
-## 13. Validation Gates (G1–G17)
+## 13. Validation Gates (G1–G19)
 
 Gates run at workbook emission. Each gate produces a row in `Validation_Log` per affected workbook row.
 
@@ -610,13 +636,15 @@ Gates run at workbook emission. Each gate produces a row in `Validation_Log` per
 | G8 | All rows | `decision_trace` populated |
 | G9 | WBS-A rows + CUs | FERC validity — must resolve via WBS_FERC_Linkage to a valid `FERC_Accounts.account_number` |
 | G10 | Mode B (CUs) | Burden coherence — `loaded_cost_per_uom = direct × (1 + total_burden_pct)`; each burden line cites a Burden_Factors row |
-| G11 (NEW) | CUs that attach permits | Every (permit_id, wbs_a_code) pair has an explicit row in `Permit_Eligibility` (for A4/A5 buckets) |
-| G12 (NEW) | WBS-A rows | FERC routing exists — every WBS-A row has at least one PRIMARY entry in `WBS_FERC_Linkage` (catches missing mappings) |
-| G13 (NEW) | WBS_FERC_Linkage rows | FERC USoA referential integrity — every `ferc_account_number` exists in `FERC_Accounts` |
-| G14 (NEW) | All catalog cross-refs | Permit_Eligibility.permit_id → Permits.permit_id; Labor_Eligibility.labor_pool_id → Labor_Pools.labor_pool_id; etc. |
-| G15 (NEW) | WBS_FERC_Linkage rows | Branch-FERC consistency — `T_*` branch_context can only link to FERC accounts where `branch_applicability ∈ {T_ONLY, BOTH, INTANGIBLE_ONLY}`; same rule mirrored for `D_*` |
-| G16 (NEW) | WBS-B rows | WBS-B never has a FERC tag (catches accidental denormalization) |
-| G17 (NEW) | All cross-dimension references | The only cross-dimension reference column is on `Master_Cost_Units` (CU layer). WBS-A → WBS-B, Permits → Labor, FERC → Permits direct references are forbidden. |
+| G11 (NEW v3) | CUs that attach permits | Every (permit_id, wbs_a_code) pair has an explicit row in `Permit_Eligibility` (for A4/A5 buckets) |
+| G12 (NEW v3) | WBS-A rows | FERC routing exists — every WBS-A row has at least one PRIMARY entry in `WBS_FERC_Linkage` (catches missing mappings) |
+| G13 (NEW v3) | WBS_FERC_Linkage rows | FERC USoA referential integrity — every `(ferc_part, ferc_account_number)` composite FK exists in `FERC_Accounts` |
+| G14 (NEW v3) | All catalog cross-refs | Permit_Eligibility.permit_id → Permits.permit_id; Labor_Eligibility.labor_pool_id → Labor_Pools.labor_pool_id; etc. |
+| G15 (NEW v3) | WBS_FERC_Linkage rows | Branch-FERC consistency — `T_*` branch_context can only link to FERC accounts where `branch_applicability ∈ {T_ONLY, BOTH, INTANGIBLE_ONLY}`; same rule mirrored for `D_*`. v4 extends to gas: `G_T*`/`G_D*` mirror against Part 201 accounts. |
+| G16 (NEW v3) | WBS-B rows | WBS-B never has a FERC tag (catches accidental denormalization) |
+| G17 (NEW v3) | All cross-dimension references | The only cross-dimension reference column is on `Master_Cost_Units` (CU layer). WBS-A → WBS-B, Permits → Labor, FERC → Permits direct references are forbidden. |
+| G18 (NEW v4) | State_Overlay_Mapping rows + WBS_FERC_Linkage rows with INHERITS_FROM_STATE_OVERLAY | State-overlay eligibility check per ADR-17 — every State_Overlay_Mapping row's `(ferc_part, federal_account_number)` pair MUST resolve to an existing FERC_Accounts row; `state_overlay` MUST be in `enums.state_overlay`; `overlay_effect` MUST be in the four allowed values. Catches state-overlay rows pointing at non-existent FERC accounts or using invalid overlay effects. |
+| G19 (NEW v4) | Settlement-view rows (CUs / line items with `accounting_view = SETTLEMENT`) | Settlement-view routing check per ADR-18 — settlement-view bookings MUST route to FERC 456 (credits) / 557 (charges) / 565 (transmission by others) with a non-null `rto_iso` value ∈ {NYISO, ISO_NE, PJM, NONE, UNKNOWN}. Catches settlement bookings using capital-account FERCs (which would corrupt monthly close). |
 
 ### 13.1 Universal validation gates V1–V9
 
@@ -641,10 +669,10 @@ error_code: <unique_id>
 error_type: <enum: missing_input | invalid_input | ambiguous_input |
              out_of_scope | gate_failure | processing_error | conflict_detected |
              unknown_value | license_restricted | vintage_stale |
-             cross_dimension_violation>   # NEW in v3
+             cross_dimension_violation>
 error_message: <human-readable>
 failed_field: <jsonpath>
-failed_gate: <G1..G17 | V1..V9>
+failed_gate: <G1..G19 | V1..V9>
 expected: <expected value/pattern>
 actual: <observed>
 recovery_options: [<option_id_1>, <option_id_2>]
@@ -669,7 +697,7 @@ Drift-prevention mechanisms. ≥5 must be active on every Mode A–E run. Number
 |---|---|---|
 | DP-01 | identity_anchor | Mode and current scope reasserted at every reply opener |
 | DP-02 | scan_protocol | Canonical enums scanned before any emit |
-| DP-03 | scope_fence | Refuses expansions outside Electric T&D in v3 |
+| DP-03 | scope_fence | Refuses expansions outside Electric T&D and Gas T&D in v4 (water and telecom remain OUT_OF_SCOPE; electric generation FERC 310–347 remains OUT_OF_SCOPE) |
 | DP-04 | vocabulary_lock | WBS/FERC/permit/labor vocabularies are closed-world |
 | DP-05 | schema_lock | workbook_schema.yaml is the only allowed output shape |
 | DP-06 | decision_trace | Every gate fires its decision trace |
@@ -835,14 +863,22 @@ Every architectural decision made during the v2→v3 transition is logged here w
 - **Rationale**: v3 named "Northeast US Electric T&D" in its description but had zero coverage of NY PSC 16 NYCRR or the 8 adjacent NE state commissions. NY canonical scope requires modeling RDM reconciliation (to FERC 440/480 series), ESCO separation per 16 NYCRR 167.5/167.6 (electric) and 312.5/312.6 (gas), REV deferred-asset accounting, and EAM credits / debits. Adjacent states require similar overlay handling.
 - **Why a 5th orthogonal dimension rather than embedded in WBS-A**: Same physical asset (pole, transformer, main) gets identical federal FERC routing regardless of jurisdiction; the state overlay is orthogonal context that affects revenue-side bookings, not capital-account routing. Matrix-model orthogonality is preserved.
 - **Source**: NY PSC Case 14-M-0450 (2015-11-24); 16 NYCRR Chapter VI + Parts 167/312; `ferc-accounting-brief-019e25c1e2f2.md` §8.
-- **Enforcement**: New `state_overlay` enum; new `State_Overlay_Mapping` workbook tab (M:N between FERC accounts and state-overlay rules); validation gate G16 (NEW v4 — `state_overlay_eligibility_check`).
+- **Enforcement**: New `state_overlay` enum; new `State_Overlay_Mapping` workbook tab (M:N between FERC accounts and state-overlay rules); validation gate **G18** (NEW v4 — `state_overlay_eligibility_check`). Note: G16 in §13 remains the v3 "WBS-B never has FERC tag" gate; G18 is the v4-added state-overlay gate. Renumbered from an earlier draft that collided with G16.
 
 ### ADR-18: Three-view accounting — add SETTLEMENT view per ADR-08 expansion — NEW v4
 
 - **Decision**: Expand ADR-08 two-view (estimating + capitalization) to THREE views by adding a SETTLEMENT view scoped to monthly RTO/ISO + state-overlay reconciliation. New `accounting_view` enum with values {ESTIMATING, CAPITALIZATION, SETTLEMENT}. New `rto_iso` enum {NYISO, ISO_NE, PJM, NONE, UNKNOWN}.
 - **Rationale**: v3 cited NYISO Manual 23 and ISO-NE PP-4 Attachment D extensively but only for cost-estimating templates (estimating view). It did not handle the distinct downstream workflow of monthly close where NYISO/ISO-NE/PJM settlement charges and credits map to FERC 456 (credits), 557 (charges), 565 (transmission of electricity by others). The two-view model didn't accommodate this without forcing settlement into the capitalization view (which it is not — settlement is operating-period, not capital).
 - **Source**: FERC AI01-1-000 Office of Enforcement; `ferc-accounting-brief-019e25c1e2f2.md` §10; `ferc-accounting-decision-register-019e25c1e099.yaml` DR-F06 (low-corroboration flag carried forward — exact FERC 456/557/565 routing is single-source and should be verified against current FERC Office of Enforcement guidance before relying on it in production close).
-- **Enforcement**: New `accounting_view` + `rto_iso` enums; new validation gate G17 (NEW v4 — `settlement_view_routing_check`); settlement-view-specific column additions in workbook_schema FERC_Accounts and WBS_FERC_Linkage tabs.
+- **Enforcement**: New `accounting_view` + `rto_iso` enums; new validation gate **G19** (NEW v4 — `settlement_view_routing_check`); settlement-view-specific column additions in `workbook_schema.yaml` for `external_files.FERC_Accounts` and `external_files.WBS_FERC_Linkage` (YAML-canonical per ADR-19). Note: G17 in §13 remains the v3 "cross-dimension via CU only" gate; G19 is the v4-added settlement-routing gate. Renumbered from an earlier draft that collided with G17.
+
+### ADR-19: Split storage — YAML-canonical for reference data; xlsx as derived view — NEW v4.1
+
+- **Decision**: `FERC_Accounts`, `WBS_FERC_Linkage`, `Permits`, and `Permit_Eligibility` are **canonical YAML** under `references/` (`ferc_accounts.yaml`, `wbs_ferc_linkage.yaml`, `permits.yaml`, `permit_eligibility.yaml`). Matching workbook tabs are **derived views** regenerated on demand (e.g. `build_review_v2.py`). `workbook_schema.yaml :: sheets:` retains **13** xlsx surfaces; the four datasets are declared under `external_files:`. Future migration candidates (not yet YAML-canonical): `Labor_Pools`, `Labor_Eligibility`, `State_Overlay_Mapping`, and rate-library tabs (`Burden_Factors`, `Labor_Rates`, `Material_Indices`, `Productivity`) when appropriate.
+- **Rationale**: Pure-reference catalog and join data — derived from FERC USoA + Registry structure, not interactively authored by humans — is poorly served by binary xlsx storage. YAML wins on four axes: (1) git-friendly diffs and PR review (linkage changes show up as one-line text diffs vs opaque binary blobs); (2) scriptable parsing without openpyxl, aligning with the rest of the skill's YAML-first authority chain (enums, definitions, workbook_schema, source_catalog, examples); (3) deterministic byte-stability (xlsx embeds zip metadata, app version, timestamps that are hard to suppress); (4) presentation-ready architectural artifacts — a YAML linkage file reads as "BGR family in T_SUB routes to 352 (Structures), with conditional alternate 353 (Station Equipment) where the foundation directly supports equipment," which surfaces intent more clearly than 442 Excel rows. xlsx remains the right home for interactive authoring (Registry, Master_Cost_Units), per-run audit artifacts (Run_Manifest, Validation_Log), and rate-library tabs where spreadsheet review is genuinely useful.
+- **Source**: User direction 2026-05-14 (T-019/T-020/T-021; session 260514-1400).
+- **Enforcement**: `workbook_schema.yaml` `external_files:` block declares YAML storage and ordering; `sheets:` retains **13** xlsx surfaces. Validation gates (G7, G12, G13, G14, G15) operate on data shape and are storage-agnostic. ADR-04 wording ("WBS_FERC_Linkage is sole FERC authority") remains substantively true — only the storage format changes. §9.1 routing reads from YAML (or the derived xlsx tab when working against an emitted workbook). `examples.yaml` NUL-byte hygiene preserved.
+- **Migration pattern**: For **future** surfaces migrating to YAML — (1) port data to `references/<name>.yaml` with header comment naming `workbook_schema.yaml :: external_files.<Surface>`; (2) move the entry from `sheets:` to `external_files:`; (3) renumber xlsx tab comments; (4) update §6.1; (5) extend the review build script to regenerate derived xlsx columns; (6) validate FK integrity across split surfaces.
 
 ## 18. Version Changelog
 
@@ -872,7 +908,7 @@ Every architectural decision made during the v2→v3 transition is logged here w
 - New `INHERITS_FROM_STATE_OVERLAY` value in `ferc_account_basis`
 - §2.1 expanded from 4 to 5 orthogonal dimensions
 - §9 routing procedure adds §9.4 state-overlay modifier
-- New `State_Overlay_Mapping` workbook tab (11th tab)
+- New `State_Overlay_Mapping` workbook tab (in the 13-tab `sheets:` contract; ADR-19 later moved four other surfaces to YAML)
 - 16 NYCRR Chapter VI + Parts 167/312 + NY PSC Case 14-M-0450 added to canonical authority
 
 **Three-view accounting (ADR-18 expanding ADR-08):**
@@ -881,6 +917,11 @@ Every architectural decision made during the v2→v3 transition is logged here w
 - SETTLEMENT view scoped to monthly RTO/ISO + state-overlay reconciliation
 - FERC 456 / 557 / 565 explicit routing for settlement charges/credits (flagged low-corroboration per DR-F06 — verify against current FERC Office of Enforcement guidance)
 
+**Validation gate additions (G18, G19) — renumbered:**
+- **G18** `state_overlay_eligibility_check` (per ADR-17) — was drafted as G16 in earlier ADR-17 text; renumbered to avoid collision with v3 G16 (`wbs_b_no_ferc`).
+- **G19** `settlement_view_routing_check` (per ADR-18) — was drafted as G17 in earlier ADR-18 text; renumbered to avoid collision with v3 G17 (`cross_dimension_via_cu_only`).
+- §13 validation-gate table now covers G1–G19; `workbook_schema.gates_active` enumerates all 19; error_policy `failed_gate` range extended to `G1..G19`; `gate_type` enum adds `state_overlay_eligibility_check` and `settlement_view_routing_check`.
+
 **Cross-references to canonical research:**
 - `47.01-generated-docs/ferc-accounting-brief-019e25c1e2f2.md` — primary research brief
 - `47.01-generated-docs/ferc-accounting-electric-verification-019e25c1e3bb.md` — verifies all 14 v3 electric accounts
@@ -888,7 +929,12 @@ Every architectural decision made during the v2→v3 transition is logged here w
 - `47.04-ontology-decision-traces/ferc-accounting-decision-register-019e25c1e099.yaml` — DR-F01 through DR-F08 decisions
 - `47.04-ontology-decision-traces/ferc-accounting-provenance-manifest-019e25c1e22a.yaml` — authority model
 
-**Decisions logged:** ADR-16, ADR-17, ADR-18.
+**Split storage — YAML-canonical data (ADR-19, session 260514-1400):**
+- Four authoritative files under `references/`: `ferc_accounts.yaml`, `wbs_ferc_linkage.yaml`, `permits.yaml`, `permit_eligibility.yaml` (row counts as built that session: 126 / 476 / 66 / 71). Matching workbook columns are **derived** — edit YAML, regenerate review workbook (e.g. `build_review_v2.py`).
+- `workbook_schema.yaml` gained `external_files:`; `sheets:` holds **13** xlsx surfaces — **17** logical surfaces total.
+- `examples.yaml` pre-existing NUL bytes removed; `SKILL.md` authority frontmatter lists all nine `references/*.yaml` files.
+
+**Decisions logged:** ADR-16, ADR-17, ADR-18, ADR-19.
 
 **Skill author note:** All 14 of v3's electric FERC accounts (303, 350, 352-358, 364-368) verified against current 18 CFR Part 101 as 100% correct — no name changes required for the v3 scope, only additions and Order-898 currency fixes.
 
@@ -954,7 +1000,7 @@ Every architectural decision made during the v2→v3 transition is logged here w
 | STR | Above-Grade Structures | SUB.CON only |
 | SWK | Sitework / Yard Prep | SUB.CON only |
 
-### 19.2 L5 codes (ACQ sub-branches — NEW in v3)
+### 19.2 L5 codes (ACQ sub-branches)
 
 | Code | Element name | Where used |
 |---|---|---|
@@ -1062,17 +1108,23 @@ Full Part 201 universe (production, gathering, products extraction, all storage 
 | G15 | Branch-FERC consistency | §13 (NEW v3) |
 | G16 | WBS-B has FERC (forbidden) | §13 (NEW v3) |
 | G17 | Cross-dimension reference outside CU | §13 (NEW v3) |
+| G18 | State-overlay eligibility (ADR-17) — State_Overlay_Mapping rows resolve to valid FERC_Accounts; overlay_effect valid | §13 (NEW v4) |
+| G19 | Settlement-view routing (ADR-18) — settlement-view rows route to 456/557/565 with non-null rto_iso | §13 (NEW v4) |
 | V1–V9 | Universal: schema, enum, citation, UOM, confidence, vintage, license, decision trace, determinism | §13.1 |
 
 ### 19.6 Reference file locations
 
 ```
 SKILL.md
-references/enums.yaml              — closed-world vocabularies
-references/definitions.yaml        — IS / IS-NOT glossary
-references/workbook_schema.yaml    — output contract (10+ tab schemas)
-references/source_catalog.yaml     — T1–T5 source tiers
-references/examples.yaml           — positive / negative examples
+references/enums.yaml                 — closed-world vocabularies
+references/definitions.yaml           — IS / IS-NOT glossary
+references/workbook_schema.yaml       — output contract (13 xlsx `sheets` + 4 YAML `external_files`)
+references/source_catalog.yaml        — T1–T5 source tiers
+references/examples.yaml              — positive / negative examples
+references/ferc_accounts.yaml         — YAML-canonical FERC USoA catalog (ADR-19)
+references/wbs_ferc_linkage.yaml      — YAML-canonical WBS-A → FERC join (ADR-19)
+references/permits.yaml               — YAML-canonical permit catalog (ADR-19)
+references/permit_eligibility.yaml    — YAML-canonical permit ↔ WBS-A eligibility (ADR-19)
 ```
 
 For controlled vocabularies see `references/enums.yaml`.
@@ -1080,5 +1132,6 @@ For IS / IS-NOT term definitions see `references/definitions.yaml`.
 For workbook output contract see `references/workbook_schema.yaml`.
 For source tiering rules see `references/source_catalog.yaml`.
 For positive / negative usage examples see `references/examples.yaml`.
+For ADR-19 authoritative data see the four `references/*.yaml` files above (not the derived xlsx tabs).
 
-## End of SKILL.md v3.0.0
+## End of SKILL.md v4.0.0
