@@ -1,0 +1,729 @@
+schema_version: 3.2.1
+last_reviewed: 2026-05-28
+authority: "skill canonical — closed world; no values added without explicit user approval. Enums grouped by dimension; comments anchor each section."
+
+# ============================================================
+# UTILITY DOMAIN (v3 = electric only; codes match UtilixV2.tblDomain)
+# ============================================================
+utility_domain:
+  - ELEC  # Electric — matches tblDomain.DomainCode
+  - GAS   # Gas — matches tblDomain.DomainCode (reserved, not active in v3)
+  # v4 candidates (NOT active in v3; refuse with OUT_OF_SCOPE):
+  # WATER, TELECOM, CIVIL_COMMON
+
+# ============================================================
+# WBS-A LEVEL CODES — Electric T&D 7-level hierarchy
+# Dot-path: <L1>.<L2>.<L3>.<L4>.<L5>.<L6>.<L7>
+# Example: E.T.S.P04.CON.BGR.FDN
+# ============================================================
+wbs_l1_electric:
+  - E   # Electric (root) — not instantiated in DB; implied by tblDomain.ELEC
+
+wbs_l2_electric:
+  # L2 = Functional Area (FNAR)
+  - T   # Transmission (≥69 kV)
+  - D   # Distribution (<69 kV)
+
+wbs_l3_electric:
+  # L3 = Facility Type (FCTY)
+  - S   # Substation
+  - L   # Line (overhead and underground)
+
+wbs_l4_electric:
+  # L4 = Phase (PHSE) — cost-to-schedule integration point
+  # Phases provide the time dimension for P6 schedule loading
+  - P00   # Planning — early scope definition, siting studies, environmental baseline
+  - P01   # Development — land acquisition, permit applications, 30% design
+  - P02   # Engineering — detailed design (60%, 90%, IFC)
+  - P03   # Pre-Construction — procurement, permit approvals, mobilization prep
+  - P04   # Project Execution — field work, construction, commissioning
+  - P05   # Closeout — as-builts, warranty, final documentation
+  # NOTE: CON is a Discipline (L5), not a Phase (L4).
+  # P04 (Project Execution) is the phase that contains CON and other field disciplines.
+
+wbs_l5_electric:
+  # L5 = Discipline (DISC) — functional group active during a phase
+  # Multiple disciplines operate within each phase.
+  #
+  # --- P04 (Project Execution) phase disciplines ---
+  - CON   # Construction — physical asset installation crews
+  #
+  # --- Other phase disciplines (to be enumerated) ---
+  # P00 disciplines: planning studies, environmental baseline
+  # P01 disciplines: land acquisition, permit applications
+  # P02 disciplines: design teams by specialty
+  # P03 disciplines: procurement, mobilization
+  # P05 disciplines: documentation, warranty
+
+wbs_l6_electric:
+  # L6 = Deliverable Category (DLVR) — category of output for a discipline
+  # Under CON discipline: physical asset categories
+  # Under other disciplines: project deliverable categories
+  #
+  # --- CON discipline deliverable categories (physical assets) ---
+  - BGR   # Below Grade — structural foundations / grounding only (NOT underground utility)
+  - UGD   # Underground — UG utility infrastructure (cables, conduit, manholes, etc.)
+  - OVH   # Overhead — line structures (L only)
+  - WIR   # Wire — overhead conductors (L only)
+  - SCT   # Sectionalizing — switches/reclosers on conductors (L only)
+  - FIB   # Fiber / Comms
+  - GCO   # General Conditions — project-wide indirects (mob, traffic, security, etc.)
+  - MEQ   # Major Equipment — transformers, breakers, switches (S; D.L only)
+  - STC   # Site Conditions — physical site factors (L T and D only)
+  - BUS   # Buswork (S only)
+  - CAB   # Control / LV Cable (S only)
+  - CHS   # Control House (S only)
+  - PRO   # Protection & Control (S only)
+  - SEC   # Security — permanent infrastructure (S only)
+  - SSV   # Station Service (S only)
+  - STR   # Above-Grade Structures (S only)
+  - SWK   # Sitework / Yard Prep (S only)
+  #
+  # --- TEN discipline deliverable categories (engineering outputs) ---
+  - D10   # 10% Design / Follow-Up
+  - D30   # 30% Design
+  # TODO: Complete non-CON deliverable categories
+
+wbs_l7_electric:
+  # L6 codes — partial enumeration; per (branch, L5) the exact valid set
+  # is constrained by examples.yaml and source_catalog. Add new codes via
+  # explicit user approval; do not invent.
+
+  # --- BGR (foundations/grounding) ---
+  - FDN  # Foundation (drilled pier, spread footing, direct embed)
+  - ANC  # Anchor — guy anchors, screw anchors, deadman
+  - DEM  # Direct Embed (pole buried in earth, no concrete)
+  - MAT  # Mat Foundation (large slab foundation)
+  - PAD  # Equipment Pad (concrete pad for transformer/breaker)
+  - GGD  # Ground Grid (buried copper grid)
+  - GRR  # Ground Rods (driven copper rods) — renamed from GRD to avoid collision
+  - OCT  # Oil Containment (concrete vault under oil-filled transformers)
+
+  # --- UGD (underground utility) ---
+  - CBL  # Underground Power Cable
+  - CDT  # Conduit (empty raceway)
+  - DBR  # Direct Buried (cable laid in earth, no conduit)
+  - HHD  # Handhole (small underground pull box)
+  - MNH  # Manhole (large underground vault)
+  - RSR  # Riser (UG-to-AG transition conduit)
+  - TRM  # UG Termination (cable end-point / pothead)
+  - TRN  # Cable Trench (open cable trough)
+
+  # --- OVH (overhead structures) ---
+  - POL  # Pole
+  - TWR  # Tower
+  - GUY  # Guying
+  - GND  # Grounding (overhead conductor system)
+  - INS  # Insulators
+  - PRD  # Protective Devices
+  - ATT  # Attachments
+
+  # --- WIR (overhead conductors) ---
+  - CND  # Conductor
+  - SHW  # Shield Wire / OHSW / OHGW (canonical term: Shield Wire per A_RULE_06)
+  - JMP  # Jumper — loop conductors at structures
+  - DMP  # Damper — vibration dampers, spacer dampers
+  - ARM  # Armor Rod — conductor protection at clamps
+  - SPC  # Spacer — bundle spacers for multi-conductor
+  - SPL  # Splice — conductor splices and compression joints
+  - WGT  # Weights — conductor weights for uplift conditions
+
+  # --- SCT (sectionalizing) ---
+  - SWT  # Switch — disconnect switch, air break switch
+  - RCL  # Recloser — automatic circuit recloser
+  - FUS  # Fuse — fuse cutout, power fuse
+  - SRA  # Surge Arrester — line arresters, TLSA
+
+  # --- FIB (fiber/comms) ---
+  - OPG  # OPGW — optical ground wire
+  - ADS  # ADSS — all-dielectric self-supporting fiber
+  - ENC  # Splice Enclosure — fiber splice cases
+  - PCH  # Patch Panel — fiber termination panels
+  - TRM  # Termination — fiber terminations (shared with UGD)
+  - SPL  # Splice — fiber splices (shared with UGD)
+  - CMC  # Comms Cabinet — renamed from CAB to avoid L5 collision
+
+  # --- GCO (indirect, project-wide) ---
+  - MOB  # Mobilization / Demobilization
+  - TCO  # Traffic Control
+  - ESC  # E&S Controls
+  - SVY  # Survey & Staking
+  - CLR  # Clearing (vegetation/tree removal; L only) — per ADR-09
+  - ACC  # Access (temp haul roads)
+  - ROC  # Rock / Rock Mitigation
+  - TMP  # Temp Security — construction site security
+  - GWT  # Groundwater / Dewatering
+  - RCL  # Reclamation (post-construction site restoration; S only) — per ADR-09
+
+  # --- MEQ ---
+  - BRK  # Circuit Breaker
+  - CAP  # Capacitor Bank
+  - CTX  # Current Transformer — metering and protection CTs
+  - GOS  # Ground Switch — grounding switches
+  - PTX  # Voltage Transformer — metering and protection VTs (canonical: VT not PT per A_RULE_06)
+  - REA  # Reactor — shunt reactors
+  - REG  # Regulator — voltage regulators
+  - SRA  # Surge Arrester (NOT "Arrestor" per A_RULE_06)
+  - SWT  # Switch — disconnect / air break switch
+  - TRF  # Transformer — power transformer (S) / line transformer (D.L)
+
+  # --- STC (Site Conditions — L T & D only) ---
+  - UTC  # Existing Utility Conflict
+  - PAV  # Pavement Restoration
+  - SRF  # Surface Restoration
+  - GRD  # Grading
+
+  # --- BUS (Buswork — S only) ---
+  - RIG  # Rigid Bus — tubular aluminum bus
+  - FLX  # Flexible Bus — strain bus, slack spans
+  - STB  # Bus Support — bus insulators and supports
+  - BCN  # Bus Connection — bus taps, connections, hardware
+  # JMP and INS are shared with WIR/OVH — same-code-same-node; valid in BUS context
+
+  # --- CAB (Control / LV Cable — S only) ---
+  - CTL  # Control Cable — control and signal cables
+  - LVC  # LV Power Cable — low voltage power cables
+  - TRY  # Cable Tray — cable tray and raceway
+  - LBL  # Labels — cable labels and tagging
+  # GND and TRM shared with OVH/UGD/FIB — same-code-same-node; valid in CAB context
+
+  # --- CHS (Control House — S only) ---
+  - BAT  # Station Battery
+  - CHG  # Battery Charger
+  - FIR  # Fire Protection / Detection
+  - HVC  # HVAC
+  - LIT  # Interior Lighting / Yard Lighting
+  - SHL  # Building Shell
+  - UPS  # UPS / DC System
+
+  # --- PRO (Protection & Control — S only) ---
+  - ANN  # Annunciator
+  - H2D  # Hydrogen Detection
+  - HMI  # HMI / Local Panel
+  - MTR  # Revenue Metering
+  - REL  # Protective Relays
+  - SCD  # SCADA / RTU
+  - SYN  # Synchronizer
+  - WEA  # Weather Station
+  - PWR  # Internal Panel Wiring — renamed from WIR to avoid L5 collision
+
+  # --- SEC (Permanent Security — S only L5) ---
+  - ACT  # Access Control — renamed from ACS to avoid SCT.ACS collision
+  - ALM  # Intrusion Alarm
+  - CCT  # CCTV
+  - FNC  # Perimeter Fence
+  - GAT  # Gates
+  - SGN  # Signage
+
+  # --- SSV (Station Service — S only) ---
+  - ATS  # Auto Transfer Switch
+  - GEN  # Generator
+  - LSW  # Light Switches / Receptacles
+  - PAN  # AC Panels
+  - SST  # Station Service Transformer
+  - SSW  # Safety Switch
+
+  # --- STR (Above-Grade Structures — S only) ---
+  - BSP  # Bus Support Structure — renamed from BUS to avoid L5 collision
+  - DED  # Deadend Structure
+  - EQS  # Equipment Support — equipment support structures
+  - GAN  # Gantry
+  - LMA  # Lightning / Static Mast
+  - PNT  # Paint / Coating
+
+  # --- SWK (Sitework — S only) ---
+  - CVT  # Culvert
+  - DRN  # Stormwater Drainage
+  - EXC  # Mass Excavation
+  - FIL  # Structural / Engineered Fill
+  - RDX  # Road Crossing / Entrance
+  - SUR  # Crushed-Stone Yard Surfacing
+  # GRD listed under STC above
+  # PAV listed under STC above
+  # UTC listed under STC above
+
+  # --- ACQ.LND / ACQ.ROW (tangibles) ---
+  - FEE  # Purchase / Easement Fees (per EPI 7)
+  # NOTE: ACQ branch reuses higher-level codes via path context, not via
+  # unique L6 codes. E.g., ACQ.PER.PRM uses PRM (Permit) as L6;
+  # ACQ.ENV.APP uses APP (Application Fee) as L6.
+
+  # --- ACQ.PER.* (Permitting tangibles) ---
+  - PRM  # Permit Fees
+  - APP  # Application Fees (NEPA, CPCN, environmental, siting)
+
+  # --- ACQ.ENV.* / ACQ.SIT.* ---
+  - RPT  # Studies & Reports (third-party deliverables)
+
+# ============================================================
+# WBS-B LEVEL CODES — Labor (NEW in v3 — no FERC tags)
+# Dot-path: <L1>.<L2>.<L3>
+# Example: LBR.DIR.ELE, LBR.IND.ENG
+# ============================================================
+wbs_b_l1:
+  - LBR   # Labor root (no T/D distinction)
+
+wbs_b_l2:
+  - DIR   # Direct Labor
+  - IND   # Indirect Labor
+
+wbs_b_l3_direct:
+  - CIV   # Civil
+  - ELE   # Electrical
+  - MEC   # Mechanical
+  - SVY   # Survey
+  - OPE   # Equipment Operations
+
+wbs_b_l3_indirect:
+  - ENG   # Engineering
+  - PMG   # Project Management
+  - CMG   # Construction Management
+  - ENV   # Environmental
+  - PER   # Permitting
+  - SIT   # Siting
+  - COM   # Commissioning
+  - QAQ   # QA / QC
+  - SAF   # Safety
+  - LRA   # Land / ROW Administration
+
+# ============================================================
+# FERC USoA — 18 CFR Part 101 (closed-world account list)
+# Full descriptions live in FERC_Accounts workbook tab.
+# ============================================================
+ferc_account_electric:
+  # Preliminary / Intangible
+  - "183"  # Preliminary Survey and Investigation Charges
+  - "301"  # Organization
+  - "302"  # Franchises and Consents
+  - "303"  # Miscellaneous Intangible Plant
+  # Transmission Plant (T)
+  - "350"  # Land and Land Rights
+  - "351"  # [Reserved]
+  - "352"  # Structures and Improvements
+  - "353"  # Station Equipment
+  - "354"  # Towers and Fixtures
+  - "355"  # Poles and Fixtures
+  - "356"  # Overhead Conductors and Devices
+  - "357"  # Underground Conduit
+  - "358"  # Underground Conductors and Devices
+  - "359"  # Roads and Trails
+  # Distribution Plant (D)
+  - "360"  # Land and Land Rights
+  - "361"  # Structures and Improvements
+  - "362"  # Station Equipment
+  - "363"  # Storage Battery Equipment
+  - "364"  # Poles, Towers and Fixtures
+  - "365"  # Overhead Conductors and Devices
+  - "366"  # Underground Conduit
+  - "367"  # Underground Conductors and Devices
+  - "368"  # Line Transformers
+  - "369"  # Services
+  - "370"  # Meters
+  - "371"  # Installations on Customer Premises
+  - "373"  # Street Lighting and Signal Systems
+  - "374"  # Asset Retirement Costs for Distribution Plant
+  - "UNKNOWN"
+
+ferc_account_class:
+  - INVESTIGATION    # 183
+  - INTANGIBLE       # 301, 302, 303
+  - TRANSMISSION     # 350-359
+  - DISTRIBUTION     # 360-374
+  - GENERAL_PLANT    # 389-399 (not currently in scope)
+
+ferc_branch_applicability:
+  - T_ONLY           # account valid only in T contexts (350, 352-359)
+  - D_ONLY           # account valid only in D contexts (360-374)
+  - BOTH             # account valid in both contexts (183)
+  - INTANGIBLE_ONLY  # 301, 302, 303
+
+ferc_account_basis:
+  # How does a row's FERC get determined? Used in Permits.ferc_account_basis.
+  - SPECIFIC_ACCOUNT             # Always routes to one specific account
+  - INHERITS_FROM_ENABLED_ASSET  # Inherits FERC from the WBS-A asset it attaches to at CU layer
+  - ACCOUNT_183_TRANSFERS        # Pre-commitment in 183; transfers to plant account on commit (per EPI 3(20))
+  - FERC_303_INTANGIBLE          # Only for genuinely intangible items (patents, franchises, licenses)
+
+# ============================================================
+# PERMIT TAXONOMY (NEW in v3)
+# ============================================================
+permit_bucket:
+  - A1_FEDERAL              # Federal, project-wide
+  - A2_STATE                # State-level, project-wide per state
+  - A3_LOCAL                # Local/municipal, project-wide per jurisdiction
+  - A4_ASSET_CROSSING       # Asset / crossing / site-specific (per instance)
+  - A5_ACTIVITY             # Activity-specific (per construction method/event)
+
+permit_scope:
+  - PROJECT                 # Whole project (A1, A2, A3)
+  - CORRIDOR                # Linear corridor section
+  - PER_CROSSING            # Per individual crossing instance
+  - PER_SITE                # Per individual site (substation, structure)
+  - PER_EVENT               # Per construction event (blast, lift, etc.)
+
+permit_cost_treatment:
+  - CAPITALIZED             # Capitalized to plant via WBS_FERC_Linkage
+  - EXPENSED                # O&M expense (e.g., post-in-service operating permits)
+  - MIXED                   # Some capitalized, some expensed
+
+# ============================================================
+# JOIN-TAB COMMON ENUMS (NEW in v3)
+# ============================================================
+granularity:
+  - L5_WILDCARD             # Applies to all L6 children of the L5
+  - L6_SPECIFIC             # Explicit L6 entry; overrides L5 wildcard
+
+applicability:
+  - PRIMARY                 # Default routing for this WBS-A code
+  - SECONDARY               # Alternative; documents but not the default
+  - CONDITIONAL             # Applies only if `condition` text triggers; surfaces as alternative
+
+# Used in WBS_FERC_Linkage to disambiguate the same code across branches
+branch_context:
+  - T_S                     # E.T.S.*
+  - T_L                     # E.T.L.*
+  - D_S                     # E.D.S.*
+  - D_L                     # E.D.L.*
+  - ALL_T                   # E.T.* (any T branch)
+  - ALL_D                   # E.D.* (any D branch)
+  - ALL                     # Cross-branch (rare)
+
+# ============================================================
+# UNIT OF MEASURE
+# ============================================================
+uom:
+  - EA
+  - LF
+  - CY
+  - SY
+  - SF
+  - TON
+  - LB
+  - HR
+  - DAY
+  - LS
+  - MILE
+  - KFT
+  - GAL
+  - Per_Location
+  - Per_Job
+  - UNKNOWN
+
+uom_conversions:
+  LF_to_MILE: 0.000189394
+  KFT_to_LF: 1000
+  KFT_to_MILE: 0.189394
+  CY_to_SY_at_1ft_depth: 1.0
+  TON_to_LB: 2000
+  GAL_to_CF: 0.133681
+
+# ============================================================
+# CONFIDENCE, LICENSE, VINTAGE, STATUS
+# ============================================================
+confidence: [HIGH, MEDIUM, LOW, UNKNOWN]
+license: [PUBLIC, PUBLIC_WITH_ATTRIBUTION, RESTRICTED, UNKNOWN]
+vintage_window: [CURRENT, RECENT, STALE, UNKNOWN]   # CURRENT ≤24mo, RECENT 24-60mo, STALE >60mo
+
+geography:
+  - US_NORTHEAST
+  - US_NEW_ENGLAND
+  - US_MID_ATLANTIC
+  - STATE_PA
+  - STATE_NJ
+  - STATE_NY
+  - STATE_CT
+  - STATE_MA
+  - STATE_RI
+  - STATE_VT
+  - STATE_NH
+  - STATE_ME
+  - STATE_DE
+  - STATE_MD
+  - STATE_DC
+  - US_NATIONAL_AVG
+  - UNKNOWN
+
+status: [candidate, active, deprecated, rejected]
+
+# ============================================================
+# LABOR CLASSIFICATIONS (CBS — specific job classes; live in Labor_Rates)
+# Each class has a single rollup to a WBS-B leaf (see definitions.yaml).
+# ============================================================
+labor_classification_electric_transmission:
+  - General_Foreman
+  - Foreman
+  - Lineman_Journeyman
+  - Lineman_Apprentice
+  - Groundman
+  - Equipment_Operator_Heavy
+  - Equipment_Operator_Crane
+  - Equipment_Operator_Drill
+  - CDL_Driver
+
+labor_classification_electric_distribution:
+  - General_Foreman
+  - Foreman
+  - Lineman_Journeyman
+  - Lineman_Apprentice
+  - Groundman
+  - Cable_Splicer_Journeyman
+  - Cable_Splicer_Apprentice
+  - Equipment_Operator
+  - CDL_Driver
+
+labor_classification_electric_substation:
+  - General_Foreman
+  - Foreman
+  - Substation_Electrician_Journeyman
+  - Substation_Electrician_Apprentice
+  - Wireman
+  - Relay_Technician
+  - Test_Technician
+  - Ironworker
+  - Millwright
+  - Equipment_Operator_Crane
+  - Equipment_Operator_Heavy
+
+labor_classification_civil_common:
+  - General_Foreman
+  - Foreman
+  - Carpenter
+  - Concrete_Finisher
+  - Form_Setter
+  - Rebar_Worker
+  - Laborer_Skilled
+  - Laborer_General
+  - Equipment_Operator_Excavator
+  - Equipment_Operator_Backhoe
+  - Equipment_Operator_Loader
+  - Equipment_Operator_Dozer
+  - Equipment_Operator_Roller
+  - Equipment_Operator_Skidsteer
+  - Flagger
+  - Surveyor
+  - CDL_Driver
+  - Mechanic
+
+labor_classification_indirect:
+  - Senior_Civil_Engineer
+  - Civil_Engineer
+  - Senior_Electrical_Engineer
+  - Electrical_Engineer
+  - Senior_Mechanical_Engineer
+  - Mechanical_Engineer
+  - Project_Manager_I
+  - Project_Manager_II
+  - Project_Manager_III
+  - Construction_Manager
+  - Field_Engineer
+  - QAQC_Inspector
+  - Safety_Officer
+  - Environmental_Specialist
+  - Permitting_Specialist
+  - Siting_Specialist
+  - Commissioning_Engineer
+  - Land_ROW_Agent
+  - Drafter
+  - Estimator
+
+# ============================================================
+# EQUIPMENT CLASSES
+# ============================================================
+equipment_class:
+  - Bucket_Truck_Single
+  - Bucket_Truck_Double
+  - Digger_Derrick
+  - Crane_Hydraulic
+  - Crane_Crawler
+  - Crane_Lattice
+  - Excavator_Mini
+  - Excavator_Standard
+  - Excavator_Large
+  - Backhoe_Loader
+  - Wheel_Loader
+  - Track_Loader
+  - Dozer
+  - Vacuum_Excavator
+  - HDD_Rig_Small
+  - HDD_Rig_Large
+  - Trencher_Walk_Behind
+  - Trencher_Ride_On
+  - Plow_Vibratory
+  - Roller_Compactor
+  - Skid_Steer
+  - Material_Handler
+  - Pickup_Truck
+  - Service_Truck
+  - Pole_Trailer
+  - Reel_Trailer
+  - Generator_Portable
+  - Pump_Dewatering
+  - UNKNOWN
+
+# ============================================================
+# CANONICAL VERBS — A_RULE_07 phrase pattern
+# ============================================================
+canonical_verbs:
+  - Install
+  - Remove
+  - Splice
+  - Terminate
+  - Test
+  - Energize
+  - De-Energize
+  - Excavate
+  - Backfill
+  - Trench
+  - Bore
+  - Plow
+  - Set
+  - Frame
+  - String
+  - Sag
+  - Climb
+  - Inspect
+  - Survey
+  - Stake
+  - Restore
+  - Patch
+  - Mill
+  - Pave
+  - Saw_Cut
+  - Locate
+  - Pothole
+  - Weld
+  - Pressure_Test
+
+forbidden_at_unit_level:
+  - Replace          # A_RULE_04: decompose to Remove + Install
+
+# ============================================================
+# IEEE/ANSI TERMINOLOGY LOCK (A_RULE_06)
+# Maps non-canonical input variants → canonical form.
+# ============================================================
+canonical_terminology:
+  Arrestor: Surge Arrester
+  Arrester: Surge Arrester
+  Air Switch: Disconnect Switch
+  PT: VT
+  Potential Transformer: Voltage Transformer
+  OHGW: Shield Wire
+  Overhead Ground Wire: Shield Wire
+  Static Wire: Shield Wire
+
+# ============================================================
+# BURDEN CATEGORIES (CU loading)
+# Lives in Burden_Factors tab; applied at CU build per Mode B step B7.
+# ============================================================
+burden_category:
+  - ENG   # Engineering
+  - PMG   # Project Management
+  - CMG   # Construction Management
+  - ENV   # Environmental
+  - PER   # Permitting
+  - SIT   # Siting / Application fees
+  - IDC   # AFUDC / Interest During Construction
+  - CON   # Contingency (only if accounting policy permits capitalization)
+
+# ============================================================
+# MODE ROUTER & ERROR/GATE TYPES
+# ============================================================
+mode:
+  - MODE_A_WBS_DEVELOPMENT
+  - MODE_B_CU_DEVELOPMENT
+  - MODE_C_PERMIT_CATALOG_BUILDING       # NEW v3
+  - MODE_D_FERC_LINKAGE_BUILDING         # NEW v3
+  - MODE_E_VALIDATION_AND_AUDIT          # NEW v3
+
+refusal_reason:
+  - OUT_OF_SCOPE
+  - MISSING_INPUT
+  - ENUM_VIOLATION
+  - INSUFFICIENT_SOURCE
+  - LICENSE_RESTRICTED
+  - AMBIGUOUS_INPUT
+  - CONFLICT_UNRESOLVED
+  - CROSS_DIMENSION_VIOLATION            # NEW v3
+
+error_type:
+  - missing_input
+  - invalid_input
+  - ambiguous_input
+  - out_of_scope
+  - gate_failure
+  - processing_error
+  - conflict_detected
+  - unknown_value
+  - license_restricted
+  - vintage_stale
+  - cross_dimension_violation            # NEW v3
+
+gate_type:
+  - enum_check
+  - regex_check
+  - path_check
+  - conflict_check
+  - completeness_check
+  - range_check
+  - referential_check
+  - citation_check
+  - vintage_check
+  - license_check
+  - novelty_check
+  - break_point_check
+  - ferc_validity_check
+  - burden_coherence_check
+  - permit_eligibility_check             # NEW v3
+  - branch_ferc_consistency_check        # NEW v3
+  - cross_dimension_check                # NEW v3
+  - matrix_coherence_check               # NEW v3
+
+deterministic_verbs:
+  classification: [classify, categorize, match, assign, label]
+  extraction: [extract, parse, identify, isolate, select]
+  validation: [validate, verify, check, confirm, assert]
+  transformation: [convert, transform, map, translate, normalize]
+  aggregation: [count, sum, average, merge, combine, deduplicate]
+  control_flow: [halt, continue, skip_to, retry, emit, reject, return, refuse]
+  comparison: [compare, diff, rank, sort, filter]
+  research: [search, locate, retrieve, cite, corroborate]
+
+forbidden_verbs:
+  - consider
+  - think_about
+  - explore
+  - try
+  - attempt
+  - look_into
+  - ponder
+  - brainstorm
+  - feel_free_to
+  - might_want_to
+  - be_creative
+
+forbidden_implicit_enumerations:
+  - include
+  - such_as
+  - for_example
+  - e.g.
+  - etc.
+  - and_more
+  - among_others
+  - various
+  - some
+  - several
+  - many
+
+drift_prevention_mechanism:
+  - DP-01-identity_anchor
+  - DP-02-scan_protocol
+  - DP-03-scope_fence
+  - DP-04-vocabulary_lock
+  - DP-05-schema_lock
+  - DP-06-decision_trace
+  - DP-07-precedence_hierarchy
+  - DP-08-scope_creep_detection
+  - DP-09-negative_examples
+  - DP-10-output_fingerprinting
+  - DP-11-matrix_coherence                # NEW v3
+  - DP-12-catalog_vs_join_discipline      # NEW v3

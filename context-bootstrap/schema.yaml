@@ -1,0 +1,59 @@
+# ============================================================================
+# CONTEXT BOOTSTRAP TEMPLATE — COPY FOR EVERY NEW SESSION
+# ============================================================================
+# File naming: {ProjectName}_YYMMDD-HHMM.yaml
+# Timestamp: session END time
+# Location: {workspace_root}/_staging/{ProjectName}/bootstrap/
+# ============================================================================
+
+project:
+  name: ""
+  summary: ""
+  scope: ""
+  non_scope: ""
+
+session:
+  id: ""                          # YYMMDD-HHMM
+  started: ""                     # ISO 8601
+  ended: ""                       # ISO 8601 — populated at finalization only
+  session_summary: ""             # 2-4 sentences — written at finalization
+
+tasks:
+  - id: ""                        # T-001, T-002, etc. (permanent, never reused)
+    title: ""                     # imperative verb phrase
+    status: ""                    # enum: ACTIVE | DONE | BLOCKED | DEFERRED | CANCELLED
+    session_origin: ""            # session ID where first created
+    session_completed: null       # session ID where DONE or CANCELLED (null otherwise)
+    priority: ""                  # enum: HIGH | MEDIUM | LOW (optional but recommended)
+    description: ""               # enough for a zero-context agent to execute
+    blockers: null                # for BLOCKED: what prevents progress
+    deferred_reason: null         # for DEFERRED: why, and reactivation conditions
+    cancelled_reason: null        # for CANCELLED: why it was dropped
+    notes: null                   # optional: accumulated context
+
+decisions:
+  - id: ""                        # D-001, D-002, etc.
+    session_origin: ""            # session ID where decided
+    domain: ""                    # area affected (database, UI, architecture, naming, etc.)
+    outcome: ""                   # what was decided
+    rationale: ""                 # WHY — must pass Zero-Context Test
+    supersedes: null              # ID of prior decision this replaces (or null)
+
+environment:
+  tools: []                       # software, frameworks, languages in active use
+  key_paths: []                   # file paths, DBs, output dirs relevant to current work
+  schema_state: null              # optional: current DB schemas, APIs, data models
+  dependencies: null              # optional: external deps, services, accounts
+  notes: null                     # optional: anything else environment-related
+
+context_file_audit:
+  - filename: ""                  # path relative to workspace root
+    status: ""                    # enum: CURRENT | STALE | NEEDS_UPDATE | DUPLICATE
+    note: null                    # why flagged, or what needs updating
+
+issues:                           # optional section
+  - id: ""                        # I-001, I-002, etc.
+    summary: ""                   # what the issue is
+    severity: ""                  # enum: HIGH | MEDIUM | LOW
+    session_origin: ""            # when first identified
+    resolution: null              # how resolved (null if open)

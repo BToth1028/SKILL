@@ -1,0 +1,167 @@
+# ============================================================================
+# EXAMPLE BOOTSTRAP — FormBuilder project, session ending 2026-04-02 at 21:45
+# ============================================================================
+
+project:
+  name: "FormBuilder"
+  summary: |
+    FormBuilder is a VBA-based tool for generating Access forms with
+    deterministic theming, layout, and control placement. Currently in
+    the design phase (04-Design). The theme engine is functional and
+    under active debugging. Next milestone is completing the theme
+    debug module and moving into build integration.
+  scope: "VBA form generation, theme engine, control layout, Access UI automation."
+  non_scope: "Database schema design, data migration, end-user training materials."
+
+session:
+  id: "260402-2145"
+  started: "2026-04-02T19:00:00-04:00"
+  ended: "2026-04-02T21:45:00-04:00"
+  session_summary: |
+    Completed modThemeDebug refactoring to use centralized color
+    resolution. Fixed 3 edge cases in theme fallback logic. Deferred
+    the gradient fill feature pending user decision on supported
+    Access versions. Next session should tackle control-level
+    theme overrides.
+
+tasks:
+  - id: "T-001"
+    title: "Refactor modThemeDebug to use centralized color resolution"
+    status: "DONE"
+    session_origin: "260401-1430"
+    session_completed: "260402-2145"
+    priority: "HIGH"
+    description: |
+      Replace all inline RGB lookups in modThemeDebug.bas with calls
+      to the centralized ResolveThemeColor function. Ensures theme
+      changes propagate consistently across all debug output.
+    blockers: null
+    deferred_reason: null
+    cancelled_reason: null
+    notes: "Completed. 14 inline lookups replaced. All debug output now theme-consistent."
+
+  - id: "T-002"
+    title: "Implement control-level theme overrides"
+    status: "ACTIVE"
+    session_origin: "260401-1430"
+    session_completed: null
+    priority: "HIGH"
+    description: |
+      Allow individual controls to override the form-level theme for
+      specific properties (forecolor, backcolor, border). Override
+      should be stored in the control's Tag property as a YAML
+      fragment. ResolveThemeColor must check Tag before falling back
+      to form-level theme.
+    blockers: null
+    deferred_reason: null
+    cancelled_reason: null
+    notes: "Design settled in D-003. Implementation not yet started."
+
+  - id: "T-003"
+    title: "Add gradient fill support to theme engine"
+    status: "DEFERRED"
+    session_origin: "260402-2145"
+    session_completed: null
+    priority: "MEDIUM"
+    description: |
+      Access 2016+ supports gradient fills on form sections. The theme
+      engine currently only handles solid colors. Adding gradient
+      support requires detecting Access version at runtime.
+    blockers: null
+    deferred_reason: |
+      User needs to confirm minimum supported Access version. If
+      Access 2013 must be supported, gradients are out of scope
+      entirely. Reactivate when user provides version floor.
+    cancelled_reason: null
+    notes: null
+
+  - id: "T-004"
+    title: "Fix theme fallback edge case for null control references"
+    status: "BLOCKED"
+    session_origin: "260402-2145"
+    session_completed: null
+    priority: "HIGH"
+    description: |
+      When a control reference is Nothing (deleted control, orphaned
+      reference), ResolveThemeColor throws Error 91. Need a guard
+      clause at the top of the function. Straightforward fix but
+      blocked on T-002 since the override logic will change the
+      function signature.
+    blockers: "Depends on T-002 (control-level override changes function signature)."
+    deferred_reason: null
+    cancelled_reason: null
+    notes: null
+
+decisions:
+  - id: "D-001"
+    session_origin: "260401-1430"
+    domain: "architecture"
+    outcome: "Centralize all color resolution through a single ResolveThemeColor function."
+    rationale: |
+      Previously, theme colors were resolved inline at each call site
+      using direct dictionary lookups. This caused inconsistencies when
+      the theme dictionary structure changed — some call sites would
+      break while others worked. Centralizing into one function means
+      the lookup logic exists in exactly one place. Alternatives
+      considered: (1) a class-based approach with a ThemeResolver
+      object — rejected because VBA class overhead is high and the
+      function is called hundreds of times per form build; (2) keeping
+      inline lookups with a helper — rejected because it still allows
+      call sites to bypass the helper.
+    supersedes: null
+
+  - id: "D-002"
+    session_origin: "260401-1430"
+    domain: "naming"
+    outcome: "Use 'Theme' prefix for all theme-related modules, 'Resolve' for lookup functions."
+    rationale: |
+      Consistent naming makes it possible to find all theme code via
+      prefix search. 'Resolve' was chosen over 'Get' because the
+      function does fallback logic (check override → check form theme
+      → check default), not a simple property access.
+    supersedes: null
+
+  - id: "D-003"
+    session_origin: "260402-2145"
+    domain: "architecture"
+    outcome: "Store control-level theme overrides in the control's Tag property as YAML fragments."
+    rationale: |
+      Access controls have a Tag property (string, unlimited length)
+      that is unused by the system. Alternatives: (1) a separate
+      lookup table mapping control names to overrides — rejected
+      because it introduces a sync problem (rename a control and
+      the override is orphaned); (2) custom properties via the
+      Properties collection — rejected because custom properties
+      don't survive copy-paste of controls between forms. The Tag
+      property travels with the control through all operations.
+    supersedes: null
+
+environment:
+  tools:
+    - "Microsoft Access 2021 (VBA 7.1)"
+    - "Cursor IDE (for YAML/spec work)"
+    - "Git (version control)"
+  key_paths:
+    - "_staging/FormBuilder/04-Design/vba/modThemeDebug.bas"
+    - "_staging/FormBuilder/04-Design/vba/modThemeEngine.bas"
+    - "_staging/FormBuilder/bootstrap/"
+  schema_state: null
+  dependencies: null
+  notes: "VBA development happens in Access. Source files exported to workspace for version control."
+
+context_file_audit:
+  - filename: "_staging/FormBuilder/04-Design/vba/modThemeDebug.bas"
+    status: "CURRENT"
+    note: null
+  - filename: "_staging/FormBuilder/04-Design/vba/modThemeEngine.bas"
+    status: "NEEDS_UPDATE"
+    note: "ResolveThemeColor signature will change when T-002 is implemented."
+
+issues:
+  - id: "I-001"
+    summary: |
+      VBA editor occasionally loses breakpoints after Access crash.
+      Not reproducible on demand. Workaround: export/reimport module.
+    severity: "LOW"
+    session_origin: "260401-1430"
+    resolution: null

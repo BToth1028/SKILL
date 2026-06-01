@@ -43,7 +43,7 @@ provenance:
   authority: human_operator
   signature: null
 created_at: "2026-05-11T23:50:00-04:00"
-updated_at: "2026-05-11T23:50:00-04:00"
+updated_at: "2026-05-14T09:10:00-04:00"
 title: >-
   Folder README — JDex ID 43.01 custom-skills (Cursor skills canonical source)
 payload:
@@ -122,6 +122,34 @@ payload:
       description: Skill — edit VS Code scoped settings.json (Cursor) with validation cautions.
       retention_defence: >-
         Canonical path for settings patches; operators rely on SKILL to avoid breaking JSON or policy-forbidden keys.
+    - relative_path: utility-cost-library-builder
+      description: >-
+        Skill v3.0.0 — deterministic Electric Utility (T&D) cost-library builder
+        using a normalized matrix cost model. Produces a 16-tab audit-ready Excel
+        workbook with four orthogonal cost dimensions joined at the Construction
+        Unit (CU) layer: WBS-A (physical assets, FERC-tagged via WBS_FERC_Linkage —
+        Registry has NO ferc_account column), WBS-B (labor pools, FERC-free),
+        Permits catalog (5-bucket taxonomy A1-A5 with explicit eligibility join),
+        FERC USoA catalog (verbatim 18 CFR Part 101 accounts 183/301-303/350-374).
+        Replaces deprecated PDL branch with ACQ (Acquisitions / soft costs) and
+        WBS-B labor pools. Five operating modes (A-E) with 17 validation gates
+        (G1-G17) and 9 universal gates (V1-V9). Authority chain includes 18 CFR
+        Part 101, 23 CFR Part 645, ISO-NE PP-4 Att. D, NYISO Manual 23 / OATT
+        §30.8, PJM Manual 14B/14C/14G, MISO MTEP25, AACE RP 96R-18, RUS Bulletins.
+        Electric-only in v3; v4 will reintroduce gas/water/telecom on the matrix
+        model.
+      retention_defence: >-
+        Canonical authoring skill for federally-reportable electric utility cost
+        libraries. Controls FERC Form 1 mapping accuracy via the WBS_FERC_Linkage
+        sole-authority pattern (Registry FERC column removed in v3 per ADR-04),
+        permit eligibility constraints, branch-FERC referential integrity, and the
+        matrix cost model that joins asset/labor/permit/FERC dimensions only at
+        the CU layer. Loses the entire closed-world relational design (entity
+        catalogs + M:N join tabs), the 17-gate validation pipeline, the 5-bucket
+        permit taxonomy with 4-test classification, and the FERC routing
+        procedure (§9.1) that prevents cross-branch contamination and 303-misuse
+        drift if removed. 15 ADRs (§17) document every architectural decision
+        with source citation for federal compliance audits.
   folder_structure:
     description: >-
       One directory per skill or skill-family package beneath this ID folder; each holds SKILL.md (or richer trees) plus
@@ -170,3 +198,6 @@ payload:
       update-cursor-settings:
         type: folder
         role: settings.json authoring skill
+      utility-cost-library-builder:
+        type: folder
+        role: Electric T&D matrix cost-model skill (v3.0.0 — normalized relational design with 16-tab workbook, WBS-A asset / WBS-B labor / Permits catalog / FERC catalog joined at CU layer, 17 validation gates, 15 ADRs)

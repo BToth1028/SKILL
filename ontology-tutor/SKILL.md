@@ -10,6 +10,8 @@ Deterministic ontology engineering for databases and folder systems. The skill t
 
 > **Before proceeding:** Read `CONTRACT.yaml` in this directory. It contains every definition, enum, gate, schema, error code, and invariant this skill references. This file contains only procedures, narratives, and rationale. If a §-pointer appears below, its target is defined in CONTRACT.yaml — see the `pointer_legend` there for the full index.
 
+> **Contract versions —** **`contract_version`:** `1.3.7` · **`supported_router_version`:** `1.2.1`. `ROUTER.yaml` must carry `router_version: 1.2.1` and `supported_contract_version: 1.3.7`; if they diverge, halt and reconcile before running the evidence pipeline.
+
 ## Session Mission
 
 Help the student design, validate, and learn ontology-driven systems where every classification, naming choice, hierarchy decision, and relationship is grounded in retrieved TypeDB evidence and recorded in an auditable `decision_trace`. In mode 2, additionally guide SQL Server embodiment of those design decisions using governed field-value review.
@@ -22,7 +24,7 @@ Run these steps when the operator explicitly invokes ontology-tutor or asks for 
 2. **Read `CONTRACT.yaml`** — the deterministic definitions companion in the same directory. All enums, gates, schemas, error codes, and invariants are defined there. **No Source 1 / Source 2 / Source 3 evidence MCP call may run until this step completes.**
 3. **Read canonical `ROUTER.yaml`** — the machine contract in the same directory as this `SKILL.md` (`ontology-tutor/ROUTER.yaml`). On success, set `router.router_status: present` and `router.router_version` from the file's top-level `router_version` (or `UNKNOWN` if key absent). If the file is missing or unreadable, set `router.router_status: missing` and `router.router_version: UNKNOWN`; then follow §Y — never emit `not_checked` for a session where this step was attempted.
 4. **MCP pre-flight check:** Verify that the MCP tools required by §L are reachable before entering the evidence pipeline. Test each: `user-directive-mcp-search` (Source 1 / Qdrant), `user-typedb-snapshot-mcp` (Source 2 / snapshot filesystem). If a required MCP is unreachable, record `mcp_preflight: { <mcp_name>: unreachable }` and alert the operator — do not silently proceed into a pipeline that will fail at the first evidence call.
-5. Confirm or default the active mode per §M. If the operator has not declared a mode, default to mode 1.
+5. Confirm or default the active mode per §M. `mode = 1` (Pure TypeDB) is the default; `mode = 2` (TypeDB Embodiment using SQL) must be explicitly declared by the operator. If a validator required by the active mode cannot accept it, halt with `VALIDATOR_INCOMPATIBLE` (§X) — never silently use the wrong contract. If a `mode = 2` command is invoked but no mode was declared and the default `mode = 1` does not support it, halt with `MODE_REQUIRED` (§X). If the operator has not declared a mode, default to `mode = 1`.
 6. Select the routing command per §D:
    - `GENERAL` for broad modeling questions.
    - `/schema` for TypeQL or schema design.
@@ -58,6 +60,10 @@ The evidence pipeline follows the fixed order defined in §R. Execute it as foll
      - Yes → same refresh procedure as Source 2 above.
      - No → invoke the Source 9 hard gate (§H). If operator does not approve → emit `EVIDENCE_EXHAUSTED` (§X), halt.
 3. **Proceed** with the session only after Source 1 contains the required evidence.
+
+### Evidence Refresh Loop
+
+Source 2 and Source 3 are refresh inputs only. When Source 1 does not contain the needed evidence, append the exact source literal to `ROUTER.yaml` under `vector_source_file_registry`, run the vectorizer loader to completion, then restart the decision from `source_1`. The machine contract for this loop is `evidence_refresh_loop_binding` in `ROUTER.yaml` (`decision_restart_after_refresh: source_1`). No TypeDB design decision may cite Source 2 or Source 3 directly — their content must flow through Source 1 first. See §R, §T, and the refresh-only constraint in CONTRACT.yaml.
 
 ### Refresh-Phase Boundary
 
@@ -160,7 +166,7 @@ For commands listed under `mode_2` in §D, run this fixed pipeline. **One table 
    - `agree_remove` → add to `proposed_removals` with `operator_decision = pending_review`.
    - `disagree` → run detailed field review; add to `disagreements` with evidence and recommendation.
    - `both_uncertain` → run detailed field review; add to `disagreements`.
-5. **Field removal governance:** No field may be excluded from mirroring (`removed_from_legacy`) unless `operator_decision = approved_remove`. Apply the canonical rules in §F.
+5. **Field removal governance:** No field may be excluded from mirroring (`removed_from_legacy`) unless `operator_decision = approved_remove`. No field may move to `removed_from_legacy` without an explicit `operator_decision = approved_remove` recorded in `proposed_removals`. Apply the canonical rules in §F.
 6. **TypeDB intent mapping:** Produce TypeDB intent mapping for all retained fields: map each field to one TypeDB primitive consistent with Mode 1 steps 2-6 (entity, relation, role, attribute, ownership, subtyping, inference, query pattern) as embodied in SQL-relevant constructs. Apply the Mode 1 subtype, relation, and attribute tests where those constructs are asserted.
 7. **Generate decision_trace** for every emitted item per §K (items recorded in pipeline step order).
 8. **Generate SQL embodiment:** The SQL Server-compatible CREATE TABLE and supporting constraints embodying the TypeDB intent mapping from step 6.

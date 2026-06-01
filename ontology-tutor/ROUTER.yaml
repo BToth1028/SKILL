@@ -1,6 +1,6 @@
-router_version: "1.1.12"
+router_version: "1.2.1"
 skill_id: ontology-tutor
-supported_contract_version: "1.1.12"
+supported_contract_version: "1.3.7"
 
 vector_ingest:
   comment: >-
@@ -31,7 +31,7 @@ retrieval_binding:
     - "routing_id_token:"
     - "<active-routing-id>"
     - "corpus_roots:"
-    - "C:/MCP/typedb"
+    - "/typedb-snapshot"
 
 typedb_live_mcp_binding:
   comment: >-
@@ -46,11 +46,15 @@ typedb_snapshot_mcp_binding:
   comment: >-
     Offline filesystem snapshot. Cursor descriptor folder is user-typedb-snapshot-mcp.
     It is a read-only evidence plane for manifests, captured schemas, and
-    captured TypeDB documentation under C:/MCP/typedb.
+    captured TypeDB documentation under the container mount /typedb-snapshot.
   canonical_logical_name: typedb-snapshot-mcp
   cursor_server_name: user-typedb-snapshot-mcp
   descriptor_folder_hint: user-typedb-snapshot-mcp
-  host_capture_root_hint: "C:/MCP/typedb"
+  # AGENTS-01-dev.md §14: the host bind-mount source (external to C:\dev) is supplied
+  # to the snapshot MCP via mcp.json (docker --mount src=...) and to the offline loader
+  # via TYPEDB_SNAPSHOT_ROOT / --root. It is intentionally NOT stored under C:\dev.
+  # The tutor addresses snapshot content by the container mount path below.
+  host_capture_root_hint: "/typedb-snapshot"
   mount_path_hint: /typedb-snapshot
   expected_tools_lexicographic:
     - read_text_file
@@ -73,6 +77,19 @@ typedb_directive_search_binding:
   expected_tools_lexicographic:
     - qdrant-find
   tutor_default_mutations: false
+
+evidence_refresh_loop_binding:
+  comment: >-
+    Machine contract for the evidence-refresh loop. Source 2 and Source 3 are
+    refresh inputs only: when Source 1 lacks the needed evidence, the exact source
+    literal is appended to vector_source_file_registry, the offline vectorizer loader
+    is run to completion, and the decision procedure restarts from Source 1. No
+    TypeDB design decision may cite Source 2 or Source 3 directly.
+  source_1: user-directive-mcp-search
+  source_2: user-typedb-snapshot-mcp
+  source_3: typedb.com
+  append_target: vector_source_file_registry
+  decision_restart_after_refresh: source_1
 
 vector_source_file_registry:
   ontology_skill_bootstrap_corpus_root: "C:/dev/40-49-ai-agents-and-prompts/46-memory-and-bootstrap/46.01-bootstrap-yamls"
@@ -161,7 +178,7 @@ rows:
         registration: user-typedb-snapshot-mcp
         tool: search_files
         args:
-          path: "C:/MCP/typedb"
+          path: "/typedb-snapshot"
           pattern: "**/*.html"
           excludePatterns: []
 
@@ -196,7 +213,7 @@ rows:
         registration: user-typedb-snapshot-mcp
         tool: search_files
         args:
-          path: "C:/MCP/typedb"
+          path: "/typedb-snapshot"
           pattern: "**/*"
           excludePatterns: []
 
@@ -231,7 +248,7 @@ rows:
         registration: user-typedb-snapshot-mcp
         tool: search_files
         args:
-          path: "C:/MCP/typedb"
+          path: "/typedb-snapshot"
           pattern: "**/*.html"
           excludePatterns: []
 
@@ -284,8 +301,8 @@ rows:
         registration: user-typedb-snapshot-mcp
         tool: search_files
         args:
-          path: "C:/MCP/typedb"
-          pattern: "*.schema.typeql"
+          path: "/typedb-snapshot"
+          pattern: "**/*.schema.typeql"
           excludePatterns: []
 
   - routing_id: R-T010_TRACE
@@ -336,6 +353,70 @@ rows:
         registration: user-typedb-snapshot-mcp
         tool: search_files
         args:
-          path: "C:/MCP/typedb"
+          path: "/typedb-snapshot"
+          pattern: "**/*"
+          excludePatterns: []
+
+  - routing_id: R-SE010_SQL_EMBODY
+    match_priority: 95
+    match:
+      command_primary: SLASH
+      slash_command_any_of:
+        - /sql-embody
+      keyword_any_of:
+        - sql embodiment
+        - sql server
+        - field review
+        - field_value_test
+        - field_review_matrix
+        - embody
+      keyword_all_of: []
+    allow_prose_output: false
+    on_mcp_unavailable: {}
+    mandatory_sequence:
+      - order: 1
+        kind: MCP
+        registration: user-directive-mcp-search
+        tool: qdrant-find
+        args:
+          query: "skill: ontology-tutor routing_id_token: R-SE010_SQL_EMBODY TypeDB SQL Server embodiment attribute owns relation entity cardinality value field governance"
+      - order: 2
+        kind: MCP
+        registration: user-typedb-snapshot-mcp
+        tool: search_files
+        args:
+          path: "/typedb-snapshot"
+          pattern: "**/*"
+          excludePatterns: []
+
+  - routing_id: R-SV010_SQL_VALIDATE
+    match_priority: 92
+    match:
+      command_primary: SLASH
+      slash_command_any_of:
+        - /sql-validate
+      keyword_any_of:
+        - sql-validate
+        - operator_decision
+        - field governance
+        - sql embodiment audit
+        - field review
+        - removed_from_legacy
+      keyword_all_of: []
+    allow_prose_output: false
+    on_mcp_unavailable: {}
+    mandatory_sequence:
+      - order: 1
+        kind: MCP
+        registration: user-directive-mcp-search
+        tool: qdrant-find
+        args:
+          query: "skill: ontology-tutor routing_id_token: R-SV010_SQL_VALIDATE TypeDB SQL Server embodiment validate field governance operator_decision alignment"
+      - order: 2
+        kind: MCP
+        registration: user-typedb-snapshot-mcp
+        tool: search_files
+        args:
+          path: "/typedb-snapshot"
           pattern: "**/*"
           excludePatterns: []

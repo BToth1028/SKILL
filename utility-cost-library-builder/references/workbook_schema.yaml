@@ -1,0 +1,595 @@
+schema_version: 3.1.0
+last_reviewed: 2026-05-28
+authority: "skill canonical — output contract; ALL emit shapes locked here. SKILL.md §6 lists the tab inventory at a glance; this file is authoritative for column-level detail."
+
+# ============================================================
+# FILENAME AND OUTPUT LOCATION
+# ============================================================
+file_naming:
+  pattern: "utility-cost-library_<mode>_electric_<YYMMDD-HHMM>.xlsx"
+  example_wbs: "utility-cost-library_wbs_electric_260514-0900.xlsx"
+  example_units: "utility-cost-library_units_electric_260514-0900.xlsx"
+  example_permits: "utility-cost-library_permits_electric_260514-0900.xlsx"
+  example_ferc: "utility-cost-library_ferc_electric_260514-0900.xlsx"
+  example_full: "utility-cost-library_full_electric_260514-0900.xlsx"
+output_dir: "<session outputs folder>"
+
+# ============================================================
+# WBS-A ID FORMAT — dot-path composite key
+# ============================================================
+wbs_a_id_format:
+  pattern: "^E\\.[TD]\\.[SL]\\.(P0[0-5])\\.(CON|ACQ)(\\.[A-Z]{2,4})+$"
+  examples:
+    - "E.T.S.P04.CON.BGR.FDN"
+    - "E.T.L.P04.CON.UGD.CBL"
+    - "E.D.S.P04.CON.MEQ.TRF"
+    - "E.D.L.ACQ.ROW.FEE"
+    - "E.T.S.ACQ.PER.PRM"
+  rules:
+    - "No trailing dot in canonical form."
+    - "No └─ Unicode prefix in Element Name column on emit."
+    - "L1=E always; L2 in {T,D}; L3 in {S,L}; L4 in {P00..P05}; L5 in {CON,ACQ,...}."
+    - "L6/L7 from enums.wbs_l6_electric / wbs_l7_electric."
+
+wbs_b_id_format:
+  pattern: "^LBR\\.(DIR|IND)\\.[A-Z]{3}$"
+  examples:
+    - "LBR.DIR.ELE"
+    - "LBR.DIR.CIV"
+    - "LBR.IND.ENG"
+    - "LBR.IND.PMG"
+  rules:
+    - "L1=LBR always."
+    - "L2 in {DIR, IND}."
+    - "L3 from enums.wbs_b_l3_direct (when L2=DIR) or wbs_b_l3_indirect (when L2=IND)."
+    - "WBS-B stops at L3. Job titles live in CBS (Labor_Rates), not WBS-B."
+
+cu_id_format:
+  pattern: "^CU-(etx|edx|esub|elin|gen)-\\d{4}$"
+  examples:
+    - "CU-etx-0042"
+    - "CU-edx-0017"
+    - "CU-esub-0101"
+
+permit_id_format:
+  pattern: "^PRM-(FED|STA|LOC|XNG|SIT|ACT|LND|ROW|ENV|ICN|TST)-[A-Z0-9-]+$"
+  examples:
+    - "PRM-FED-NEPA-EIS"
+    - "PRM-FED-USACE-404-NWP"
+    - "PRM-FED-NPDES-CGP"
+    - "PRM-STA-NY-ART7"
+    - "PRM-XNG-RR"
+    - "PRM-XNG-DOT-HOP"
+    - "PRM-XNG-FAA-7460"
+    - "PRM-ACT-BLAST"
+    - "PRM-LND-FEE"
+
+labor_pool_id_format:
+  pattern: "^LBR\\.(DIR|IND)\\.[A-Z]{3}$"
+  # Same as wbs_b_id_format; redundancy is intentional for catalog lookups.
+
+ferc_account_format:
+  pattern: "^\\d{3}$"  # 3-digit account number
+  examples: ["183", "303", "350", "352", "353", "364", "367"]
+
+# ============================================================
+# CANONICAL SHEET ORDER (16 tabs)
+# ============================================================
+sheets:
+
+  # ----------------------------------------------------------
+  # Tab 1 — Audit envelope
+  # ----------------------------------------------------------
+  Run_Manifest:
+    type: audit_envelope
+    primary_key: run_id
+    columns:
+      - run_id                       # ULID
+      - mode                         # one of enums.mode
+      - utility_domain               # ELECTRIC (v3)
+      - geography_filter
+      - vintage_filter
+      - source_tiers_used            # comma-list of T1..T5
+      - rows_emitted_registry
+      - rows_emitted_permits
+      - rows_emitted_permit_eligibility
+      - rows_emitted_ferc_accounts
+      - rows_emitted_wbs_ferc_linkage
+      - rows_emitted_labor_pools
+      - rows_emitted_labor_eligibility
+      - rows_emitted_cus
+      - rows_emitted_burden_factors
+      - rows_emitted_labor_rates
+      - rows_emitted_material_indices
+      - rows_emitted_productivity
+      - rows_flagged_total
+      - confidence_high
+      - confidence_medium
+      - confidence_low
+      - confidence_unknown
+      - gates_passed
+      - gates_failed
+      - timestamp_utc_iso
+      - timestamp_local
+      - schema_version
+      - skill_version
+      - notes
+    mode: all
+
+  # ----------------------------------------------------------
+  # Tab 2 — Registry (WBS-A)  *** NO ferc_account column ***
+  # ----------------------------------------------------------
+  Registry:
+    type: entity_catalog
+    description: "WBS-A: physical assets + ACQ tangibles. FERC routing is in WBS_FERC_Linkage (sole authority). Registry has NO ferc_account column."
+    primary_key: wbs_id
+    columns:
+      - wbs_id                       # E.T.S.P04.CON.BGR.FDN (dot-path)
+      - L1                           # always "E"
+      - L2                           # T | D
+      - L3                           # S | L
+      - L4                           # P00..P05
+      - L5                           # CON | ACQ | TEN | ENV | COM
+      - L6                           # family code (BGR, UGD, OVH, etc.)
+      - L7                           # element code (leaf)
+      - element_name                 # human-readable, no └─ prefix
+      - canonical_phrase             # [verb] [object] [material/type] [context]
+      - definition                   # 1-2 sentence definition
+      - scope_inclusions             # what counts as in scope (replaces L7 column)
+      - scope_exclusions             # what does NOT count
+      - assumptions                  # any conditional context
+      - utility_domain               # ELECTRIC
+      - is_overhead                  # boolean — true for ACQ.* rows; false for CON.* rows
+      - source_refs                  # comma-list of source_id
+      - confidence
+      - license
+      - status
+      - vintage_iso
+      - vintage_window
+      - decision_trace
+    forbidden_columns:
+      - ferc_account                 # CRITICAL — must NOT appear; see ADR-04 and A_RULE_13
+    mode: A
+
+  # ----------------------------------------------------------
+  # Tab 3 — Permits (catalog)
+  # ----------------------------------------------------------
+  Permits:
+    type: entity_catalog
+    description: "Canonical permit-type catalog. One row per permit type."
+    primary_key: permit_id
+    columns:
+      - permit_id                    # PRM-FED-NEPA-EIS, PRM-XNG-RR, etc.
+      - permit_name                  # human-readable
+      - bucket                       # ∈ enums.permit_bucket (A1_FEDERAL .. A5_ACTIVITY)
+      - scope                        # ∈ enums.permit_scope (PROJECT .. PER_EVENT)
+      - issuing_authority_type       # "Federal agency" / "State PUC" / "Railroad" / "State DOT" / "USACE" / etc.
+      - issuing_authority_examples   # pipe-delimited (e.g., "Amtrak | CSX | NS | NJT | Metro-North | LIRR | MBTA")
+      - state_scope                  # geography enum; nullable for federal
+      - typical_fee_usd_low
+      - typical_fee_usd_high
+      - fee_basis                    # "per application" / "per crossing" / "per event" / "per linear foot"
+      - triggering_condition         # free text — e.g., "tower height >200 ft AGL", "rock excavation"
+      - ferc_account_basis           # ∈ enums.ferc_account_basis
+      - ferc_account_specific        # FERC account number if basis = SPECIFIC_ACCOUNT; else null
+      - cost_treatment               # ∈ enums.permit_cost_treatment
+      - authority_citation           # e.g., "18 CFR §101 EPI 3(9)", "23 CFR 645"
+      - typical_lead_time_days
+      - status                       # ∈ enums.status
+      - source_refs
+      - confidence
+      - license
+      - last_verified_iso
+      - notes
+      - decision_trace
+    mode: C
+
+  # ----------------------------------------------------------
+  # Tab 4 — Permit_Eligibility (join: permit ↔ WBS-A asset)
+  # ----------------------------------------------------------
+  Permit_Eligibility:
+    type: join_M2N
+    description: "M:N join between Permits and Registry. A4/A5 buckets have explicit rows here; A1/A2/A3 (project-level) have NO rows per ADR-06."
+    primary_key: linkage_id
+    foreign_keys:
+      - permit_id → Permits.permit_id
+      - wbs_a_code → Registry.wbs_id (via L5 wildcard or L6 specific match)
+    columns:
+      - linkage_id
+      - permit_id                    # FK
+      - wbs_a_code                   # L5 or L6 code — e.g., "BGR", "OVH.TWR"
+      - granularity                  # L5_WILDCARD | L6_SPECIFIC
+      - branch_context               # ∈ enums.branch_context
+      - applicability                # ALWAYS | CONDITIONAL | OPTIONAL  (re-using applicability enum semantics)
+      - condition                    # free text for CONDITIONAL — e.g., "structure height >200 ft AGL"
+      - notes
+      - decision_trace
+    closed_world_rule:
+      - "A1/A2/A3 bucket permits have NO rows here (implicit project scope per ADR-06)."
+    mode: C
+
+  # ----------------------------------------------------------
+  # Tab 5 — FERC_Accounts (catalog)
+  # ----------------------------------------------------------
+  FERC_Accounts:
+    type: entity_catalog
+    description: "Canonical FERC USoA catalog per 18 CFR Part 101. One row per account."
+    primary_key: account_number
+    columns:
+      - account_number               # "303", "350", "352", etc. (string, preserves leading zeros)
+      - official_title               # verbatim from 18 CFR
+      - account_class                # ∈ enums.ferc_account_class
+      - branch_applicability         # ∈ enums.ferc_branch_applicability
+      - description                  # verbatim "This account shall include..." paragraph
+      - items_list                   # verbatim numbered Items sub-list (multiline)
+      - notes                        # verbatim NOTE / cross-reference text
+      - epi_references               # which Electric Plant Instructions govern
+      - authority_citation           # "18 CFR §101 Account 354", "18 CFR §367.3030"
+      - asset_retirement_pair        # companion ARO account if applicable; nullable
+      - status                       # active | reserved | deprecated
+      - last_verified_iso            # date last cross-checked against eCFR
+      - source_url
+    mode: D
+
+  # ----------------------------------------------------------
+  # Tab 6 — WBS_FERC_Linkage (join: WBS-A ↔ FERC account)
+  #          *** SOLE AUTHORITY for FERC mapping in v3 ***
+  # ----------------------------------------------------------
+  WBS_FERC_Linkage:
+    type: join_M2N
+    description: "M:N join between Registry and FERC_Accounts. Sole authority for FERC mapping in v3 (replaces Registry.ferc_account column per ADR-04)."
+    primary_key: linkage_id
+    foreign_keys:
+      - wbs_a_code → Registry (via L5_WILDCARD or L6_SPECIFIC match)
+      - ferc_account_number → FERC_Accounts.account_number
+    columns:
+      - linkage_id
+      - wbs_a_code                   # L5 or L6 code or full dot-path
+      - granularity                  # L5_WILDCARD | L6_SPECIFIC
+      - branch_context               # T_S | T_L | D_S | D_L | ALL_T | ALL_D | ALL
+      - ferc_account_number          # FK → FERC_Accounts.account_number
+      - applicability                # PRIMARY | SECONDARY | CONDITIONAL
+      - condition                    # free text for CONDITIONAL
+      - authority_citation           # EPI section or specific FERC source
+      - notes
+      - decision_trace
+    closed_world_rule:
+      - "Every Registry wbs_id MUST resolve to exactly one PRIMARY entry here (via L6_SPECIFIC or L5_WILDCARD)."
+      - "Branch-FERC consistency: T_* branch_context can only reference FERC accounts with branch_applicability ∈ {T_ONLY, BOTH, INTANGIBLE_ONLY}; same for D_*."
+    mode: D
+
+  # ----------------------------------------------------------
+  # Tab 7 — Labor_Pools (WBS-B catalog)  *** NO ferc_account ***
+  # ----------------------------------------------------------
+  Labor_Pools:
+    type: entity_catalog
+    description: "WBS-B: labor pool catalog. Three-level hierarchy LBR.{DIR|IND}.{discipline}. NEVER FERC-tagged (per A_RULE_11 / G16)."
+    primary_key: labor_pool_id
+    columns:
+      - labor_pool_id                # LBR.DIR.ELE, LBR.IND.ENG, etc.
+      - L1                           # always "LBR"
+      - L2                           # DIR | IND
+      - L3                           # ∈ enums.wbs_b_l3_direct or wbs_b_l3_indirect
+      - pool_name                    # "Civil", "Engineering", etc.
+      - definition
+      - typical_classifications      # which CBS labor classes roll up here (informational; live in Labor_Rates)
+      - utility_domain               # ELECTRIC
+      - status
+      - decision_trace
+    forbidden_columns:
+      - ferc_account                 # CRITICAL — WBS-B is FERC-free; see A_RULE_11
+      - ferc_account_primary
+      - ferc_account_secondary
+    mode: A
+
+  # ----------------------------------------------------------
+  # Tab 8 — Labor_Eligibility (join: labor pool ↔ WBS-A asset)
+  # ----------------------------------------------------------
+  Labor_Eligibility:
+    type: join_M2N
+    description: "M:N join recording which labor pools can be consumed by which WBS-A assets. Used only when labor is constrained (e.g., Cable_Splicer only for UGD.CBL or UGD.TRM). Unconstrained labor (Foreman, Laborer_General) has NO rows here (implicit applies-to-all)."
+    primary_key: linkage_id
+    foreign_keys:
+      - labor_pool_id → Labor_Pools.labor_pool_id
+      - wbs_a_code → Registry (L5_WILDCARD or L6_SPECIFIC)
+    columns:
+      - linkage_id
+      - labor_pool_id                # FK
+      - wbs_a_code
+      - granularity                  # L5_WILDCARD | L6_SPECIFIC
+      - branch_context               # ∈ enums.branch_context
+      - applicability                # PRIMARY | SECONDARY | CONDITIONAL
+      - condition                    # free text for CONDITIONAL
+      - notes
+      - decision_trace
+    mode: A
+
+  # ----------------------------------------------------------
+  # Tab 9 — Master_Cost_Units (CU — the matrix join layer)
+  # ----------------------------------------------------------
+  Master_Cost_Units:
+    type: matrix_join
+    description: "The CU layer — the ONLY tab where multiple cost dimensions are joined. Each CU references WBS-A, consumes N CBS labor classes (each rolling up to WBS-B), optionally attaches M permits (with eligibility check), and inherits FERC from WBS-A → WBS_FERC_Linkage."
+    primary_key: cu_id
+    columns:
+      - cu_id                        # CU-etx-0042
+      - wbs_a_link                   # FK to Registry.wbs_id (the asset this CU produces)
+      - canonical_phrase
+      - utility_domain
+      - uom                          # ∈ enums.uom
+      - scope_description
+      # --- Labor consumption (join to WBS-B via CBS) ---
+      - labor_consumption            # JSON-like list: [{cbs_class, count, hours_per_uom}, ...]
+      - labor_hours_per_uom          # aggregate across classes
+      # --- Equipment and materials ---
+      - equipment_list               # JSON-like list: [{equipment_class, hours}, ...]
+      - material_list                # JSON-like list: [{material, qty, uom}, ...]
+      - production_rate_value
+      - production_rate_basis
+      - assumptions
+      - geography
+      - vintage_iso
+      - vintage_window
+      # --- Direct cost components (v2 explicit) ---
+      - direct_labor_cost_per_uom
+      - direct_material_cost_per_uom
+      - direct_equipment_cost_per_uom
+      - direct_cost_per_uom          # = labor + material + equipment
+      # --- Burden loading (kept from v2; partial-allocation use case) ---
+      - burden_eng_pct
+      - burden_pmg_pct
+      - burden_cmg_pct
+      - burden_env_pct
+      - burden_per_pct
+      - burden_sit_pct
+      - burden_idc_pct
+      - burden_con_pct
+      - total_burden_pct             # = Σ above
+      - loaded_cost_per_uom          # = direct_cost_per_uom × (1 + total_burden_pct)
+      # --- Permit attachment (join to Permits) ---
+      - permits_attached             # JSON-like list: [{permit_id, fee_amount}, ...]
+      # --- FERC routing (derived, not stored) ---
+      - ferc_account_derived         # populated by query: wbs_a_link → WBS_FERC_Linkage PRIMARY
+      - source_refs
+      - confidence
+      - license
+      - normalization_notes
+      - synonyms
+      - status
+      - decision_trace
+    matrix_join_invariants:
+      - "wbs_a_link must exist in Registry.wbs_id"
+      - "Every cbs_class in labor_consumption must exist in Labor_Rates"
+      - "Every permit_id in permits_attached must have a Permit_Eligibility row for wbs_a_link's L5/L6 (or fall under implicit project scope)"
+      - "ferc_account_derived must equal WBS_FERC_Linkage PRIMARY for wbs_a_link + branch_context"
+    mode: B
+
+  # ----------------------------------------------------------
+  # Tab 10 — Burden_Factors
+  # ----------------------------------------------------------
+  Burden_Factors:
+    type: rate_library
+    primary_key: burden_id
+    columns:
+      - burden_id                    # e.g., "BURDEN-T-SUB-ENG-2026Q2"
+      - burden_category              # ∈ enums.burden_category
+      - branch                       # T_S | T_L | D_S | D_L | ALL
+      - applies_to                   # ALL | <wbs_id pattern>
+      - rate_pct                     # decimal, e.g. 0.07 = 7%
+      - rate_basis                   # e.g., "company AFE policy 2026-01-01"
+      - effective_date_iso
+      - expiration_date_iso
+      - source_refs
+      - confidence
+      - license
+      - status
+      - decision_trace
+    mode: B
+
+  # ----------------------------------------------------------
+  # Tab 11 — Labor_Rates (CBS catalog with WBS-B rollup)
+  # ----------------------------------------------------------
+  Labor_Rates:
+    type: rate_library
+    description: "CBS — specific labor classifications with wage rates. Each class has a single rollup to a WBS-B leaf via labor_pool_link."
+    primary_key: rate_id
+    columns:
+      - rate_id
+      - classification               # CBS label — Lineman_Journeyman, Senior_Civil_Engineer, etc.
+      - labor_pool_link              # FK → Labor_Pools.labor_pool_id  (this is the CBS → WBS-B mapping)
+      - utility_domain
+      - geography
+      - base_rate_usd_per_hr
+      - fringe_usd_per_hr
+      - total_rate_usd_per_hr
+      - rate_basis                   # CBA | Davis-Bacon | BLS | Prevailing | Other
+      - effective_date_iso
+      - expiration_date_iso
+      - vintage_window
+      - source_refs
+      - confidence
+      - license
+      - notes
+      - decision_trace
+    forbidden_columns:
+      - ferc_account                 # CBS doesn't carry FERC; G16
+    mode: B
+
+  # ----------------------------------------------------------
+  # Tab 12 — Material_Indices
+  # ----------------------------------------------------------
+  Material_Indices:
+    type: rate_library
+    primary_key: index_id
+    columns:
+      - index_id
+      - commodity
+      - index_type                   # ENR_CCI | ENR_BCI | CPI | PPI | LME | Other
+      - basis_year
+      - reference_period_iso
+      - value
+      - units
+      - geography
+      - source_refs
+      - confidence
+      - license
+      - notes
+      - decision_trace
+    mode: B
+
+  # ----------------------------------------------------------
+  # Tab 13 — Productivity
+  # ----------------------------------------------------------
+  Productivity:
+    type: reference
+    primary_key: prod_id
+    columns:
+      - prod_id
+      - cu_id_link
+      - utility_domain
+      - canonical_phrase
+      - crew_configuration
+      - production_rate_value
+      - production_rate_basis
+      - terrain_assumption
+      - access_assumption
+      - weather_window
+      - source_refs
+      - confidence
+      - license
+      - notes
+      - decision_trace
+    mode: B
+
+  # ----------------------------------------------------------
+  # Tab 14 — Source_Catalog
+  # ----------------------------------------------------------
+  Source_Catalog:
+    type: reference
+    primary_key: source_id
+    columns:
+      - source_id
+      - tier                         # T1..T5
+      - title
+      - publisher
+      - url_or_doc_id
+      - access_date_iso
+      - vintage_iso
+      - license
+      - geography_scope
+      - notes
+    mode: all
+
+  # ----------------------------------------------------------
+  # Tab 15 — Model_Equations
+  # ----------------------------------------------------------
+  Model_Equations:
+    type: reference
+    primary_key: equation_id
+    columns:
+      - equation_id
+      - cu_id_scope
+      - wbs_id_scope
+      - form
+      - inputs
+      - output_uom
+      - geography_scope
+      - source_refs
+      - confidence
+      - license
+      - notes
+      - decision_trace
+    mode: all
+
+  # ----------------------------------------------------------
+  # Tab 16 — Validation_Log
+  # ----------------------------------------------------------
+  Validation_Log:
+    type: audit
+    primary_key: row_ref
+    columns:
+      - row_ref                      # sheet!row
+      - sheet_name
+      - gate_id                      # G1..G17, V1..V9
+      - gate_description
+      - result                       # PASS | FAIL | WARN
+      - detail
+      - resolution
+    mode: all
+
+# ============================================================
+# DETERMINISM RULES
+# ============================================================
+determinism:
+  row_ordering:
+    Registry: "wbs_id ASC"
+    Permits: "permit_id ASC"
+    Permit_Eligibility: "permit_id ASC, wbs_a_code ASC, granularity ASC"
+    FERC_Accounts: "account_number ASC (string sort: 183 < 301 < 302 < 303 < 350 < ...)"
+    WBS_FERC_Linkage: "branch_context ASC, wbs_a_code ASC, applicability ASC (PRIMARY < SECONDARY < CONDITIONAL)"
+    Labor_Pools: "L1 ASC, L2 ASC, L3 ASC"
+    Labor_Eligibility: "labor_pool_id ASC, wbs_a_code ASC"
+    Master_Cost_Units: "cu_id ASC"
+    Burden_Factors: "branch ASC, burden_category ASC, effective_date_iso ASC"
+    Labor_Rates: "classification ASC, geography ASC, effective_date_iso ASC"
+    Source_Catalog: "source_id ASC"
+    others: "primary_key ASC"
+  empty_cells: "UNKNOWN"             # literal token; never blank
+  byte_stability: "Same inputs produce byte-identical workbook except run_id and timestamps."
+
+# ============================================================
+# GATE ENFORCEMENT (referenced from SKILL.md §13)
+# ============================================================
+gates_active:
+  - G1_path_populated
+  - G2_citation_present
+  - G3_no_cbs_in_wbs
+  - G4_ieee_ansi_terminology
+  - G5_path_uniqueness
+  - G6_canonical_phrase
+  - G7_enum_validity
+  - G8_decision_trace_present
+  - G9_ferc_validity
+  - G10_burden_coherence
+  - G11_permit_eligibility           # NEW v3
+  - G12_ferc_routing_exists          # NEW v3
+  - G13_ferc_usoa_referential        # NEW v3
+  - G14_catalog_cross_reference      # NEW v3
+  - G15_branch_ferc_consistency      # NEW v3
+  - G16_wbs_b_no_ferc                # NEW v3
+  - G17_cross_dimension_via_cu_only  # NEW v3
+  - V1_schema_conformance
+  - V2_enum_integrity
+  - V3_citation_integrity
+  - V4_uom_integrity
+  - V5_confidence_consistency
+  - V6_vintage_hygiene
+  - V7_license_hygiene
+  - V8_decision_trace_universal
+  - V9_determinism
+
+# ============================================================
+# CRITICAL SCHEMA INVARIANTS (the v3 hard constraints)
+# ============================================================
+invariants:
+  - id: INV-01
+    rule: "Registry has NO ferc_account column. WBS_FERC_Linkage is sole authority."
+    enforcement: A_RULE_13, G12
+  - id: INV-02
+    rule: "Labor_Pools and Labor_Rates have NO ferc_account columns. WBS-B is FERC-free."
+    enforcement: A_RULE_11, G16
+  - id: INV-03
+    rule: "Cross-dimensional references (WBS-A ↔ WBS-B, WBS-A ↔ Permits, etc.) ONLY happen via Master_Cost_Units."
+    enforcement: A_RULE_15, G17
+  - id: INV-04
+    rule: "Eligibility tabs (Permit_Eligibility, Labor_Eligibility) hold explicit M:N rows. No comma-string lists in entity-catalog cells."
+    enforcement: A_RULE_14, P2, DP-12
+  - id: INV-05
+    rule: "Project-level permits (buckets A1/A2/A3) have NO Permit_Eligibility rows (implicit scope per ADR-06)."
+    enforcement: ADR-06
+  - id: INV-06
+    rule: "L7 is never a column. Scope assumptions / inclusions / exclusions live in metadata columns on the L6 row."
+    enforcement: A_RULE_03, P8
+  - id: INV-07
+    rule: "Same code (e.g., RCL) cannot mean different things in different branches. S.GCO.RCL = Reclamation; L.GCO.CLR = Clearing."
+    enforcement: A_RULE_09, ADR-09

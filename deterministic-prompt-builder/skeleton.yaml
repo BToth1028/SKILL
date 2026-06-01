@@ -1,0 +1,230 @@
+# ============================================================
+# DETERMINISTIC PROMPT SKELETON v1.0
+# Copy this template for every new prompt.
+# No sections may be omitted. Use `n/a` or `[]` for empty sections.
+# ============================================================
+
+prompt_metadata:
+  id: ""                          # unique identifier (slug format: lowercase-dashes)
+  version: ""                     # semver: major.minor.patch
+  created: ""                     # ISO 8601 date
+  last_modified: ""               # ISO 8601 date
+  author: ""                      # who wrote this prompt
+  status: ""                      # enum: [draft, review, active, deprecated]
+  supersedes: ""                  # id of prompt this replaces (or n/a)
+  changelog:
+    - version: ""
+      date: ""
+      changes: []
+
+# ============================================================
+# SECTION 1 — IDENTITY
+# ============================================================
+identity:
+  role: ""                        # one sentence: what the agent IS
+  role_constraints:               # list of things the agent is NOT
+    - ""
+  persona: ""                     # tone/style (e.g., "terse technical analyst")
+  authority_model:
+    canonical_source: ""          # the ONE source of truth
+    derived_sources: []           # sources that exist only because of canonical
+    conflict_resolution: ""       # what wins when sources disagree
+    trust_hierarchy:
+      - level_1: "prompt instructions (this document)"
+      - level_2: "canonical_source data"
+      - level_3: "derived_source data"
+      - level_4: "user-provided context in conversation"
+      - level_5: "agent's training knowledge (LOWEST priority)"
+
+# ============================================================
+# SECTION 2 — MISSION
+# ============================================================
+mission:
+  objective: ""                   # one sentence: what success looks like
+  scope:
+    in_scope: []                  # exhaustive list of what the agent WILL do
+    out_of_scope: []              # exhaustive list of what the agent WILL NEVER do
+    gray_zone_policy: ""          # what to do with ambiguous requests
+  success_criteria: []            # measurable, binary (pass/fail) conditions
+  failure_criteria: []            # conditions that mean the task has failed
+
+# ============================================================
+# SECTION 3 — INPUT RULES
+# ============================================================
+input_rules:
+  accepted_sources: []            # exhaustive list of input types the agent may use
+  rejected_sources: []            # input types the agent MUST ignore
+  input_validation:
+    required_fields: []
+    field_types: {}               # field_name: expected_type
+    field_constraints: {}         # field_name: constraint (regex, enum, range)
+  missing_input_policy: ""        # what to do when required input is absent
+  ambiguous_input_policy: ""      # what to do when input is unclear
+
+# ============================================================
+# SECTION 4 — DECISION PROCEDURE (THE ALGORITHM)
+# ============================================================
+decision_procedure:
+  description: ""                 # one sentence summary
+  pre_conditions:
+    - "All required inputs are present and validated"
+    - "Input types match field_types specification"
+  steps:
+    - step: 1
+      name: ""
+      action: ""                  # exactly what to do (deterministic verb)
+      input: ""                   # what this step reads
+      output: ""                  # what this step produces
+      validation: ""              # check before proceeding
+      on_failure: ""              # what to do if validation fails
+    # ... additional steps ...
+  branching_rules: []             # if-then rules for conditional paths
+  termination_conditions:
+    - "All steps completed successfully → emit output"
+    - "Any step fails validation → emit error"
+    - "Input is out_of_scope → emit refusal"
+  post_conditions:
+    - "Output matches schema exactly"
+    - "decision_trace is complete and accurate"
+
+# ============================================================
+# SECTION 5 — OUTPUT CONTRACT
+# ============================================================
+output_contract:
+  format: ""                      # enum: [yaml, json, markdown, plaintext]
+  schema:
+    fields:
+      - name: ""
+        type: ""                  # enum: [string, integer, float, boolean, list, object, enum]
+        required: true
+        description: ""
+        allowed_values: []        # for enum types
+        default: null
+        constraints: ""           # regex, range, etc.
+    ordering: ""                  # how fields are sorted
+    nesting: ""                   # hierarchical structure description
+  decision_trace:
+    required: true
+    fields:
+      - rule_applied: ""
+      - input_hash: ""
+      - step_log: []
+      - gates_passed: []
+      - gates_failed: []
+  forbidden_in_output:
+    - "preamble text"
+    - "apologies"
+    - "hedging language"
+    - "conversational filler"
+    - "explanations not in schema"
+    - "markdown formatting not in schema"
+
+# ============================================================
+# SECTION 6 — CONSTRAINTS
+# ============================================================
+constraints:
+  hard_constraints: []            # MUST be obeyed, no exceptions
+  soft_constraints: []            # SHOULD be obeyed, with documented exceptions
+  performance_constraints:
+    max_response_length: ""       # token/word limit
+    max_processing_steps: ""      # step count limit
+    timeout_behavior: ""          # what to do if limit reached
+  ethical_constraints: []         # boundaries the agent will not cross
+
+# ============================================================
+# SECTION 7 — DRIFT PREVENTION
+# ============================================================
+drift_prevention:
+  identity_restatement:
+    frequency: ""                 # enum: [every_turn, every_n_turns, on_scope_change]
+    n: null
+    format: ""
+  scope_enforcement:
+    on_out_of_scope_request: ""
+    escalation_path: ""
+  behavioral_checkpoints:
+    checkpoint_trigger: ""
+    checkpoint_format: ""
+    checkpoint_fields:
+      - compliance_status: ""     # enum: [compliant, drifted, uncertain]
+      - drift_indicators: []
+      - corrective_action: ""
+  output_consistency:
+    fingerprinting: true
+    schema_lock: true
+    vocabulary_lock: true
+
+# ============================================================
+# SECTION 8 — ERROR HANDLING
+# ============================================================
+error_handling:
+  error_format:
+    fields:
+      - error_code: ""
+      - error_type: ""            # enum: [missing_input, invalid_input, ambiguous_input,
+                                  #        out_of_scope, gate_failure, processing_error,
+                                  #        conflict_detected, unknown_value]
+      - error_message: ""
+      - failed_field: ""
+      - expected: ""
+      - actual: ""
+      - recovery_options: []
+  escalation_policy: ""
+  retry_policy: ""
+
+# ============================================================
+# SECTION 9 — ACKNOWLEDGMENT PROTOCOL
+# ============================================================
+acknowledgment_protocol:
+  on_receipt:
+    actions:
+      - "parse all sections"
+      - "validate prompt structure against skeleton"
+      - "confirm identity and mission"
+      - "enumerate constraints"
+      - "report readiness or structural errors"
+    format: ""
+  on_ambiguity:
+    actions:
+      - "identify ambiguous element"
+      - "generate structured clarification request"
+      - "DO NOT proceed until clarification received"
+    format: ""
+  on_scope_violation:
+    actions:
+      - "identify the out-of-scope request"
+      - "cite the specific scope rule that applies"
+      - "return structured refusal"
+      - "DO NOT perform the requested action"
+    format: ""
+
+# ============================================================
+# SECTION 10 — EXAMPLES (FEW-SHOT)
+# ============================================================
+examples:
+  positive_examples:
+    - input: ""
+      expected_output: ""
+      reasoning: ""
+  negative_examples:
+    - input: ""
+      expected_output: ""
+      reasoning: ""
+  edge_cases:
+    - input: ""
+      expected_output: ""
+      reasoning: ""
+
+# ============================================================
+# SECTION 11 — TESTING & VALIDATION SUITE
+# ============================================================
+testing:
+  test_cases:
+    - test_id: ""
+      description: ""
+      input: ""
+      expected_output: ""
+      validation_type: ""         # enum: [exact_match, schema_match, contains, regex]
+      pass_criteria: ""
+  regression_tests: []
+  adversarial_tests: []
