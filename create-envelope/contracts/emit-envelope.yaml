@@ -1,0 +1,248 @@
+contract_id: emit-envelope
+contract_version: "1.0.0"
+applies_to_routes:
+  - R-EE010_EMIT_ENVELOPE
+governed_by_router: ../ROUTER.yaml
+
+mission: >-
+  Define the closed-world deterministic protocol for emitting a PDKOS
+  envelope sidecar (<basename>.envelope.yaml) for a given governed file
+  under C:\dev. Inputs, gates, output shape, and failure codes are all
+  enumerated below; no implicit behavior, no caller-side improvisation.
+
+# ----------------------------------------------------------------------------
+# INPUTS (closed-world)
+# ----------------------------------------------------------------------------
+inputs:
+  required:
+    governed_file_path:
+      type: absolute_path
+      constraints:
+        - must_exist_on_disk
+        - must_be_under_c_dev
+        - must_be_a_file_not_directory
+      failure_code_on_violation: GOVERNED_FILE_NOT_FOUND_OR_OUTSIDE_DEV
+    doc_class:
+      type: string
+      constraints:
+        - must_be_in_subtype_registry
+      registry_source:
+        envelope_id: "019dd5b8-5083-7c0b-9d0e-5b7c0a4ed060"
+        path: "payload.subtype_registry.entries[].subtype"
+      failure_code_on_violation: DOC_CLASS_NOT_REGISTERED
+    parent_envelope_id:
+      type: uuid
+      constraints:
+        - must_match_uuid_pattern
+        - must_resolve_to_existing_envelope_under_c_dev
+        - resolved_envelope_subtype_must_be_in_doc_class_permitted_parent_subtypes
+      failure_codes_on_violation:
+        - PARENT_NOT_UUID
+        - PARENT_NOT_FOUND
+        - PARENT_SUBTYPE_NOT_PERMITTED
+  optional:
+    title_override:
+      type: string
+      default: derived_from_basename
+    purpose_override:
+      type: string
+      default: per_subtype_default_phrasing
+    extra_payload_keys:
+      type: mapping
+      default: {}
+      constraints:
+        - keys_must_not_collide_with_required_keys
+    overwrite_explicit_paths:
+      type: list_of_absolute_path
+      default: []
+      purpose: explicit per-path consent for overwriting existing sidecars
+
+# ----------------------------------------------------------------------------
+# GATES (run in declared order; first failure halts)
+# ----------------------------------------------------------------------------
+gates:
+
+  - id: registry_resolve_gate
+    order: 1
+    description: >-
+      Load the Subtype Contracts Authority and resolve the doc_class
+      entry. Cache the entry's required_payload_keys, role_constraint,
+      domain_constraint, labels_kot, canonical_contract_name (or pattern),
+      permitted_parent_subtypes, sidecar_for, and required_payload_subkeys.
+    operations:
+      - load_yaml_at: "C:/dev/40-49-ai-agents-and-prompts/41-prompts/41.03-deterministic-specs/pdkos-subtype-contracts-authority--5b7c0a4ed060.yaml"
+      - assert_envelope_id_equals: "019dd5b8-5083-7c0b-9d0e-5b7c0a4ed060"
+      - lookup_entry_by_subtype: doc_class
+      - cache_resolved_contract_facets
+    failure_codes:
+      - REGISTRY_LOAD_FAILED
+      - DOC_CLASS_NOT_REGISTERED
+
+  - id: parent_subtype_gate
+    order: 2
+    description: >-
+      Resolve parent_envelope_id; assert its subtype is in the resolved
+      doc_class entry's permitted_parent_subtypes set.
+    operations:
+      - locate_envelope_by_id_under_c_dev: parent_envelope_id
+      - read_subtype: parent_envelope.subtype
+      - assert_in_set: { value: parent_envelope.subtype, set: resolved_contract.permitted_parent_subtypes }
+    failure_codes:
+      - PARENT_NOT_FOUND
+      - PARENT_SUBTYPE_NOT_PERMITTED
+
+  - id: naming_gate
+    order: 3
+    description: >-
+      Compute target sidecar path. Pattern: <basename(governed_file_path)>
+      .envelope.yaml in same directory as governed_file_path.
+    operations:
+      - target_path = dirname(governed_file_path) + sep + basename(governed_file_path) + ".envelope.yaml"
+      - assert_target_path_under_c_dev
+    failure_codes:
+      - NAMING_GATE_FAILED
+
+  - id: overwrite_gate
+    order: 4
+    description: >-
+      If target_path exists on disk, require explicit consent via
+      overwrite_explicit_paths.
+    operations:
+      - if_exists(target_path) and target_path not in overwrite_explicit_paths -> halt
+    failure_codes:
+      - TARGET_EXISTS_NO_OVERWRITE
+
+  - id: path_gate
+    order: 5
+    description: >-
+      Path safety. Reject path traversal, reject paths outside C:\dev.
+    operations:
+      - reject_if_target_path_contains_dot_dot_segment
+      - reject_if_target_path_not_under_c_dev
+    failure_codes:
+      - GATE_FAILED
+
+  - id: emission_validation_gate
+    order: 6
+    description: >-
+      Validate the constructed envelope (in memory) against (a) the
+      envelope schema authority's 15-key shape, (b) the resolved per-
+      subtype required_payload_keys, (c) UUID format for id and
+      parent_envelope_id, (d) closed-world relation type for the
+      contains edge.
+    operations:
+      - assert_envelope_has_all_15_top_level_keys
+      - assert_envelope_payload_has_all_required_payload_keys
+      - assert_envelope_payload_has_all_required_payload_subkeys
+      - assert_envelope_id_matches_uuid_pattern
+      - assert_envelope_subtype_equals_input_doc_class
+      - assert_envelope_role_in_resolved_contract_role_constraint
+      - assert_envelope_domain_in_resolved_contract_domain_constraint
+      - assert_envelope_labels_kot_equals_resolved_contract_labels_kot
+      - assert_contains_edge_present_with_source_eq_parent_envelope_id_and_target_eq_envelope_id
+    failure_codes:
+      - EMISSION_VALIDATION_FAILED
+
+# ----------------------------------------------------------------------------
+# OUTPUT (atomic write)
+# ----------------------------------------------------------------------------
+output:
+  target_path_pattern: "<dirname(governed_file_path)>/<basename(governed_file_path)>.envelope.yaml"
+  write_strategy: atomic_single_write
+  envelope_template:
+    description: >-
+      The 15 base keys plus per-subtype required keys. Static keys are
+      auto-populated from the resolved contract. Per-doc keys are
+      computed per the rules below.
+    static_keys:
+      ontology_version: "1.0.0"
+      vocab_authority_id: "019dd4ef-a239-7280-8177-0dd9b07db842"
+      contract.version: "1.0.0"
+      lifecycle.state: active
+      lifecycle.version: 1
+    computed_keys:
+      id: mint_uuid_v4_or_v7
+      domain: from_resolved_contract.domain_constraint[0]_or_caller_override
+      role: from_resolved_contract.role_constraint[0]_or_caller_override
+      subtype: from_input.doc_class
+      contract.name: from_resolved_contract.canonical_contract_name_or_match_pattern
+      labels.kot: from_resolved_contract.labels_kot
+      lifecycle.since: now_iso8601
+      created_at: now_iso8601
+      updated_at: now_iso8601
+      title: from_input.title_override_or_derive("<basename> — PDKOS sidecar")
+      relations.edges:
+        - type: contains
+          source: from_input.parent_envelope_id
+          target: computed.id
+          note: derived
+      provenance:
+        issued_by: human_operator_or_caller_id
+        issued_at: now_iso8601
+        issue_ref: from_input.purpose_override_or_default("Sidecar emitted by create-envelope.")
+        authority: human_operator
+        signature: null
+      payload:
+        pdkos_authority_ref: "cc2bb9ce-ab27-4a90-82d4-53e3051d696a"
+        governs_file: basename(governed_file_path)
+        purpose: from_input.purpose_override_or_default
+        # additional required_payload_keys per resolved contract:
+        # caller MUST supply via extra_payload_keys when the per-subtype
+        # contract requires keys beyond pdkos_authority_ref/purpose/governs_file
+  return_value:
+    envelope_id: computed.id
+    sidecar_path: target_path
+
+# ----------------------------------------------------------------------------
+# FAILURE CODE SUMMARY
+# ----------------------------------------------------------------------------
+failure_codes:
+  REGISTRY_LOAD_FAILED:
+    severity: fatal
+    description: Subtype Contracts Authority YAML missing, unparseable, or wrong id.
+  DOC_CLASS_NOT_REGISTERED:
+    severity: fatal
+    description: Caller passed a doc_class value not present in subtype_registry.entries[].
+  PARENT_NOT_UUID:
+    severity: fatal
+    description: parent_envelope_id is not a valid UUID.
+  PARENT_NOT_FOUND:
+    severity: fatal
+    description: parent_envelope_id does not resolve to any envelope under C:\dev.
+  PARENT_SUBTYPE_NOT_PERMITTED:
+    severity: fatal
+    description: Parent envelope's subtype is not in permitted_parent_subtypes for the chosen doc_class.
+  GOVERNED_FILE_NOT_FOUND_OR_OUTSIDE_DEV:
+    severity: fatal
+    description: governed_file_path does not exist on disk or is not under C:\dev.
+  NAMING_GATE_FAILED:
+    severity: fatal
+    description: Target sidecar path computation failed (e.g., target outside C:\dev).
+  TARGET_EXISTS_NO_OVERWRITE:
+    severity: fatal
+    description: Target sidecar exists and overwrite consent for that path was not provided.
+  GATE_FAILED:
+    severity: fatal
+    description: Generic gate failure (path safety, etc.).
+  EMISSION_VALIDATION_FAILED:
+    severity: fatal
+    description: Constructed envelope failed self-validation against base shape or per-subtype contract.
+
+# ----------------------------------------------------------------------------
+# DETERMINISM ANCHORS
+# ----------------------------------------------------------------------------
+determinism_anchors:
+  same_inputs_same_output: >-
+    Given identical (governed_file_path, doc_class, parent_envelope_id,
+    optional inputs) and identical Subtype Contracts Authority registry
+    state, this contract produces identical sidecar content modulo (a)
+    the freshly minted UUID and (b) the timestamp fields. All other
+    output bytes are deterministic.
+  no_implicit_behavior: >-
+    Every behavior is enumerated above. No implicit type coercion, no
+    silent default substitution beyond what's listed under output
+    .envelope_template.computed_keys.
+  closed_world_inputs_outputs: >-
+    doc_class enum is closed-world per registry. failure_codes set is
+    closed. envelope_template.static_keys are constants. envelope shape
+    keys are 15-fixed.

@@ -1,0 +1,41 @@
+ontology_version: "1.0.0"
+vocab_authority_id: "019dd4ef-a239-7280-8177-0dd9b07db842"
+id: "019dd5b8-5086-7c0b-9d0e-c3ea7e7e5083"
+domain: capability
+role: capability
+subtype: router_data
+contract:
+  name: router_data_envelope
+  version: "1.0.0"
+lifecycle:
+  state: active
+  since: "2026-05-08T15:12:00-04:00"
+  version: 1
+labels:
+  kot: router
+relations:
+  edges:
+    - type: contains
+      source: "019dd5b8-5084-7c0b-9d0e-c3ea7e7e5081"
+      target: "019dd5b8-5086-7c0b-9d0e-c3ea7e7e5083"
+      note: >-
+        skill_root contains this router_data sidecar per registry
+        (router_data.permitted_parent_subtypes = [skill_root,
+        command_root]).
+provenance:
+  issued_by: human_operator
+  issued_at: "2026-05-08T15:12:00-04:00"
+  issue_ref: PDKOS sidecar for ROUTER.yaml.
+  authority: human_operator
+  signature: null
+created_at: "2026-05-08T15:12:00-04:00"
+updated_at: "2026-05-08T15:12:00-04:00"
+title: create-envelope ROUTER.yaml — PDKOS sidecar
+payload:
+  pdkos_authority_ref: "cc2bb9ce-ab27-4a90-82d4-53e3051d696a"
+  governs_file: "ROUTER.yaml"
+  router_version: "1.0.0"
+  purpose: >-
+    Sidecar making ROUTER.yaml a typed graph node. The governed file is
+    the L2 single-route dispatch table for create-envelope; it has its
+    own router_version field that this sidecar mirrors for cross-check.
